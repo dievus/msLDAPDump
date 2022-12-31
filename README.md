@@ -12,5 +12,5 @@ msLDAPDump simplifies LDAP enumeration in a domain environment by wrapping the l
 Users can bind to LDAP anonymously through the tool and dump basic information about LDAP, including domain naming context, domain controller hostnames, and more.
 
 <p align="center">
-  <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png" width="521" height="374"/>
+  <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png" width="781" height="560"/>
 </p>
