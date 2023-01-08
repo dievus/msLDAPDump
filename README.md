@@ -22,3 +22,6 @@ Results are dumped into a text document in the tool's directory once complete. O
 <p align="center">
   <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png" width="781" height="560"/>
 </p>
+
+### To-Do
+- [ ] Add support for LDAPS (LDAP Secure)
