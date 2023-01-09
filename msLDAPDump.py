@@ -192,7 +192,6 @@ def ldap_search():
         with open(f"{domain}.ldapdump.txt", 'a') as f:
             f.write(entries_val)
             f.close()
-        print(entries_val)
         conn.unbind()
         time.sleep(2)
         print(
