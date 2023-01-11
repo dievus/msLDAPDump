@@ -15,9 +15,19 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 
 ### Credentialed Bind
 
-Users can bind to LDAP utilizing credentials and a known domain name. Using credentials in the tool will dump the domain naming context as with binding anonymously, and then the user can enter the domain name where required. The tool is currently configured to dump users, computers, and Group Policy Object (GPO) information. If you think the tool could use additional checks please open an issue with the recommendation, and if it makes sense I'll add it.
+Users can bind to LDAP utilizing valid user account credentials. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
 
-Results are dumped into a text document in the tool's directory once complete. Opening the tool in something like Notepad++ allows for easy searching of keywords, such as passwords in descriptions.
+* Users
+* Groups
+* Kerberoastable Accounts
+* ASREPRoastable Accounts
+* Constrained Delegation
+* Unconstrained Delegation
+* Computer Accounts - will also attempt DNS lookups on the hostname to identify IP addresses
+* Group Policy Objects (GPO)
+* Passwords in User description fields
+
+Each check outputs the raw contents to a text file, and an abbreviated, cleaner version of the results in the terminal environment. The results in the terminal are pulled from the individual text files.
 
 <p align="center">
   <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png" width="781" height="560"/>
