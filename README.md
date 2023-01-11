@@ -35,4 +35,4 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 
 ### To-Do
 - [ ] Add support for LDAPS (LDAP Secure)
-- [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server
+- [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
