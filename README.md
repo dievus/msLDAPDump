@@ -30,7 +30,7 @@ Users can bind to LDAP utilizing valid user account credentials. Using credentia
 Each check outputs the raw contents to a text file, and an abbreviated, cleaner version of the results in the terminal environment. The results in the terminal are pulled from the individual text files.
 
 <p align="center">
-  <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png" width="781" height="560"/>
+  <img src="https://github.com/dievus/msLDAPDump/blob/main/images/image.png"/>
 </p>
 
 ### To-Do
