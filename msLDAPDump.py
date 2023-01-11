@@ -4,6 +4,7 @@ from getpass import getpass
 from ldap3 import Server, Connection, ALL, SIMPLE, SYNC
 import ldap3
 from colorama import Fore, Style, init
+import sys
 
 class LDAPSearch:
     def __init__(self):
@@ -37,15 +38,18 @@ class LDAPSearch:
     def anonymous_bind(self):
         try:
             dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
-            print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-            self.hostname = socket.gethostbyaddr(str(dom_con))[0]
-            if self.hostname is not None:
-                print(
-                    self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+            if sys.platform.startswith('win32'):
+                print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+                self.hostname = socket.gethostbyaddr(str(dom_con))[0]
+                if self.hostname is not None:
+                    print(
+                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+                else:
+                    print(
+                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+                    self.hostname = self.dom_con
             else:
-                print(
-                    self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-                self.hostname = self.dom_con
+                self.hostname = dom_con
         except (ipaddress.AddressValueError, socket.herror):
             print(self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
             self.anonymous_bind()
@@ -74,18 +78,21 @@ class LDAPSearch:
     def authenticated_bind(self):
         try:
             self.dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
-            print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-            self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
-            if self.hostname is not None:
-                print(
-                    self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+            if sys.platform.startswith('win32'):
+                print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+                self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
+                if self.hostname is not None:
+                    print(
+                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+                else:
+                    print(
+                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+                    self.hostname = self.dom_con
             else:
-                print(
-                    self.info + '\n[info] Could not identify target hostname. Continuing...\n' + self.close)
                 self.hostname = self.dom_con
         except (ipaddress.AddressValueError, socket.herror):
             print(self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
-            self.anonymous_bind()
+            self.authenticated_bind()
         except socket.timeout:
             print(self.info + "[error] Timeout while trying to contact the host. Please try again." + self.close)
             self.authenticated_bind()
