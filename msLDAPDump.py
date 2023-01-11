@@ -5,6 +5,7 @@ from ldap3 import Server, Connection, ALL, SIMPLE, SYNC
 import ldap3
 from colorama import Fore, Style, init
 import sys
+from datetime import datetime
 
 class LDAPSearch:
     def __init__(self):
@@ -20,6 +21,8 @@ class LDAPSearch:
         self.fail = Fore.RED + Style.BRIGHT
         self.success = Fore.GREEN + Style.BRIGHT
         self.close = Style.RESET_ALL
+        self.t1 = None
+        self.t2 = None
 
     def banner(self):
         print(self.info + "")
@@ -38,6 +41,7 @@ class LDAPSearch:
     def anonymous_bind(self):
         try:
             dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
+            self.t1 = datetime.now()
             if sys.platform.startswith('win32'):
                 print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
                 self.hostname = socket.gethostbyaddr(str(dom_con))[0]
@@ -74,10 +78,15 @@ class LDAPSearch:
         self.domain = domain_contents[0]
         self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
         print(self.info + f'[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
-
+        self.t2 = datetime.now()
+        total = self.t2 - self.t1
+        total = str(total)
+        print(self.info + f"LDAP enumeration completed in {total}.\n" + self.close)
+        
     def authenticated_bind(self):
         try:
             self.dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
+            self.t1 = datetime.now()
             if sys.platform.startswith('win32'):
                 print(self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
                 self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
@@ -121,7 +130,7 @@ class LDAPSearch:
             print(self.info + "Invalid credentials. Please try again." + self.close)
             self.get_credentials()
             self.authenticated_bind()
-        print(self.success + f"[success] Connected to domain {self.hostname}.\n" + self.close)
+        print(self.success + f"[success] Connected to {self.hostname}.\n" + self.close)
         self.search_users(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(), self.computer_search(), self.gpo_search(), self.admin_count_search(), self.find_fields() 
 
     def search_users(self):
@@ -397,7 +406,11 @@ class LDAPSearch:
             for i in range(lineLen):
                 end = descript_info[i]
                 print(self.info + f'{end}')
-            print()
+            # print()
+            self.t2 = datetime.now()
+            total = self.t2 - self.t1
+            total = str(total)
+            print(self.info + f"LDAP enumeration completed in {total}.\n" + self.close)
             quit()
 
     def run(self):
