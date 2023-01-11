@@ -20,8 +20,8 @@ def banner():
     print('  / __ `__ \/ ___/ /   / / / / /| | / /_/ / / / / / / / __ `__ \/ __ \ ')
     print(' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
     print('/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
-    print('                   Active Directory LDAP Enumerator          /_/       v1.0')
-    print("                Another unnecessary gizmo by The Mayor           \n" + Style.RESET_ALL)
+    print('                   Active Directory LDAP Enumerator          /_/ v1.0')
+    print("                     Another Project by TheMayor \n" + Style.RESET_ALL)
 
 
 def ldap_search():
@@ -361,8 +361,7 @@ def ldap_search():
         conn.search(f'{dom_1}', '(objectClass=computer)',
                     attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = conn.entries
-        print('\n' + '-'*36 + 'Computers' + '-'*35 +
-              '\nThis may take some time as we are running some DNS lookups for IP addresses...\n')
+        print('\n' + '-'*36 + 'Computers' + '-'*35 +'\n')
         entries_val = str(entries_val)
         with open(f"{domain}.computers.txt", 'a') as f:
             f.write(entries_val)
@@ -374,21 +373,35 @@ def ldap_search():
                     comp_name = line.strip()
                     comp_name = comp_name.replace('sAMAccountName: ', '')
                     comp_name = comp_name.replace('$', '')
-                    try:
-                        comp_ip = socket.gethostbyname(comp_name)
-                        if comp_ip:
-                            print(f'{comp_name} - {comp_ip}')
-                        else:
-                            print(comp_name)
-                    except socket.gaierror:
-                        pass
+                    print(comp_name)
                     comp_val += 1
                     if comp_val >= 25:
                         print(
                             info + f'\n[info] Truncating results at 25. Check {domain}.computers.txt for full details.' + close)
                         break
             f.close()
-
+        print(info + "\n[info] Let's try to resolve hostnames to IP addresses. This may take some time depending on the number of computers...\n" + close)
+        with open(f"{domain}.computers.txt", 'r+') as f:
+                comp_val1 = 0
+                for line in f:
+                    if line.startswith('    sAMAccountName: '):
+                        comp_name = line.strip()
+                        comp_name = comp_name.replace('sAMAccountName: ', '')
+                        comp_name = comp_name.replace('$', '')
+                        try:
+                            comp_ip = socket.gethostbyname(comp_name)
+                            if comp_ip:
+                                print(f'{comp_name} - {comp_ip}')
+                            else:
+                                continue
+                        except socket.gaierror:
+                            pass
+                        comp_val1 += 1
+                        if comp_val1 >= 25:
+                            print(
+                                info + f'\n[info] Truncating results at 25. Check {domain}.computers.txt for full details.' + close)
+                            break
+                f.close()
         # Query LDAP for Group Policy Objects (GPO)
         conn.search(f'{dom_1}', '(objectclass=groupPolicyContainer)',
                     attributes=ldap3.ALL_ATTRIBUTES)
@@ -455,7 +468,7 @@ def find_fields():
     descript_info = []
     idx = 0
     print(
-        info + '[info] Checking the output for information in description fields.\n' + close)
+        info + '\n[info] Checking the output for information in description fields.\n' + close)
     with open(f'{domain}.users.txt', 'r') as refile:
         lines = refile.readlines()
         for line in lines:
