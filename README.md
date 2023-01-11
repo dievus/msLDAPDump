@@ -3,7 +3,7 @@ LDAP enumeration tool implemented in Python3
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M03Q2JN)
 
-msLDAPDump simplifies LDAP enumeration in a domain environment by wrapping the lpap3 library from Python in an easy-to-use interface. Like most of my tools, this one works best on Windows. If using Unix, the tool only works when accessing an LDAP server from the primary eth0 adapter.
+msLDAPDump simplifies LDAP enumeration in a domain environment by wrapping the lpap3 library from Python in an easy-to-use interface. Like most of my tools, this one works best on Windows. If using Unix, the tool will not resolve hostnames that are not accessible via eth0 currently.
 
 ### Binding Anonymously
 
