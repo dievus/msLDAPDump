@@ -24,6 +24,9 @@ Users can bind to LDAP utilizing valid user account credentials. Using credentia
 * Constrained Delegation
 * Unconstrained Delegation
 * Computer Accounts - will also attempt DNS lookups on the hostname to identify IP addresses
+* Identify Domain Controllers
+* Identify MSSQL Servers
+* Identify Exchange Servers
 * Group Policy Objects (GPO)
 * Passwords in User description fields
 
