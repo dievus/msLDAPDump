@@ -138,9 +138,9 @@ class LDAPSearch:
         self.domain = domain_contents[0]
         self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
         server = Server(str(self.hostname), get_info=ALL)
-        self.conn = Connection(
-            server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True)
         try:
+            self.conn = Connection(
+                server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True)
             self.conn.bind()
         except ldap3.core.exceptions.LDAPBindError:
             print(self.info + "Invalid credentials. Please try again." + self.close)
