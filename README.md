@@ -47,7 +47,7 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 ### To-Do
 - [ ] Add support for LDAPS (LDAP Secure)
 - [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
-- [ ] Add support for querying child domain information
+- [ ] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
 - [ ] Figure out how to link the name to the Description field dump at the end of the script
 
 ### Mandatory Disclaimer
