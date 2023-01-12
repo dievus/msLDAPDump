@@ -299,7 +299,7 @@ class LDAPSearch:
 
     def computer_search(self):
         # Query LDAP for computer accounts
-        self.conn.search(f'{self.dom_1}', '(&(objectClass=computer)(!(msDS-ManagedServiceAccount)))',
+        self.conn.search(f'{self.dom_1}', '(&(objectClass=computer)(!(objectclass=msDS-ManagedServiceAccount)))',
                          attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
         print('\n' + '-'*36 + 'Computers' + '-'*35 + '\n')
