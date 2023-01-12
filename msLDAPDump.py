@@ -6,6 +6,7 @@ import ldap3
 from colorama import Fore, Style, init
 import sys
 from datetime import datetime
+import os, os.path
 
 
 class LDAPSearch:
@@ -156,6 +157,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*38 + 'Users' + '-'*37 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.users.txt"):
+            os.remove(f"{self.domain}.users.txt")
         with open(f"{self.domain}.users.txt", 'w') as f:
             f.write(entries_val)
             f.close
@@ -180,6 +183,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*37 + 'Groups' + '-'*37 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.groups.txt"):
+            os.remove(f"{self.domain}.groups.txt")
         with open(f"{self.domain}.groups.txt", 'w') as f:
             f.write(entries_val)
             f.close
@@ -204,6 +209,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'Kerberoastable Users' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.kerberoast.txt"):
+            os.remove(f"{self.domain}.kerberoast.txt")
         with open(f"{self.domain}.kerberoast.txt", 'w') as f:
             f.write(entries_val)
             f.close()
@@ -228,6 +235,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'ASREPRoastable Users' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.asreproast.txt"):
+            os.remove(f"{self.domain}.asreproast.txt")
         with open(f"{self.domain}.asreproast.txt", 'w') as f:
             f.write(entries_val)
             f.close()
@@ -252,6 +261,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*28 + 'Unconstrained Delegations' + '-'*27 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.unconstrained.txt"):
+            os.remove(f"{self.domain}.unconstrained.txt")
         with open(f"{self.domain}.unconstrained.txt", 'w') as f:
             f.write(entries_val)
             f.close()
@@ -276,6 +287,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*29 + 'Constrained Delegations' + '-'*28 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.constrained.txt"):
+            os.remove(f"{self.domain}.constrained.txt")
         with open(f"{self.domain}.constrained.txt", 'w') as f:
             f.write(entries_val)
             f.close()
@@ -304,6 +317,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*36 + 'Computers' + '-'*35 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.computers.txt"):
+            os.remove(f"{self.domain}.computers.txt")
         with open(f"{self.domain}.computers.txt", 'a') as f:
             f.write(entries_val)
             f.close()
@@ -355,6 +370,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*31 + 'Domain Controllers' + '-'*31 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.domaincontrollers.txt"):
+            os.remove(f"{self.domain}.domaincontrollers.txt")
         with open(f"{self.domain}.domaincontrollers.txt", 'a') as f:
             f.write(entries_val)
             f.close()
@@ -380,6 +397,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*34 + 'MSSQL Servers' + '-'*33 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.mssqlservers.txt"):
+            os.remove(f"{self.domain}.mssqlservers.txt")
         with open(f"{self.domain}.mssqlservers.txt", 'a') as f:
             f.write(entries_val)
             f.close()
@@ -405,6 +424,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*32 + 'Exchange Servers' + '-'*32 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.exchangeservers.txt"):
+            os.remove(f"{self.domain}.exchangeservers.txt")
         with open(f"{self.domain}.exchangeservers.txt", 'a') as f:
             f.write(entries_val)
             f.close()
@@ -430,6 +451,8 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'Group Policy Objects' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.GPO.txt"):
+            os.remove(f"{self.domain}.GPO.txt")
         with open(f"{self.domain}.GPO.txt", 'a') as f:
             f.write(entries_val)
             f.close()
@@ -459,6 +482,8 @@ class LDAPSearch:
         print('\n' + '-'*30 + 'Protected Admin Users' + '-'*29 +
               '\nThese are user accounts with adminCount=1 set\n')
         entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.admincount.txt"):
+            os.remove(f"{self.domain}.admincount.txt")
         with open(f"{self.domain}.admincount.txt", 'a') as f:
             f.write(entries_val)
             f.close()
