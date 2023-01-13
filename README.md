@@ -46,9 +46,11 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 
 ### To-Do
 - [ ] Add support for LDAPS (LDAP Secure)
+- [X] NTLM Authentication
 - [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
 - [ ] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
 - [ ] Figure out how to link the name to the Description field dump at the end of the script
+- [ ] Implement command line options rather than inputs 
 
 ### Mandatory Disclaimer
 Please keep in mind that this tool is meant for ethical hacking and penetration testing purposes only. I do not condone any behavior that would include testing targets that you do not currently have permission to test against.
