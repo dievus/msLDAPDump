@@ -610,7 +610,7 @@ class LDAPSearch:
         ldap_search.banner()
         try:
             choice = input(
-                'Use credentials for binding? (Select N for NTLM)(Y/N): ').strip().upper()
+                'Use credentials for binding? (Y/N): ').strip().upper()
             if choice == 'Y':
                 self.get_credentials()
                 self.authenticated_bind()
