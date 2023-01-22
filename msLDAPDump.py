@@ -142,7 +142,6 @@ class LDAPSearch:
         self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
         server = Server(str(self.hostname), get_info=ALL)
         hash_front = "aad3b435b51404eeaad3b435b51404ee:"
-        self.password = f"{hash_front}{self.password}"
         try:
             self.conn = Connection(
                 server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True)
@@ -153,7 +152,7 @@ class LDAPSearch:
             self.authenticated_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.search_users(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def ntlm_bind(self):
@@ -214,7 +213,7 @@ class LDAPSearch:
             self.ntlm_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.search_users(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
     def search_users(self):
         self.conn.search(
@@ -240,6 +239,31 @@ class LDAPSearch:
                             f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.')
                         break
             f.close()
+
+    def machine_quota(self):
+        # Query ms-DS-MachineAccountQuota
+        self.conn.search(f'{self.dom_1}', '(objectclass=*)',
+                         attributes=['ms-DS-MachineAccountQuota'])
+        entries_val = self.conn.entries[0]
+        print('\n' + '-'*30 + 'Machine Account Quota' + '-'*29 + '\n')
+        entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.machine_quota.txt"):
+            os.remove(f"{self.domain}.machine_quota.txt")
+        with open(f"{self.domain}.machine_quota.txt", 'w') as f:
+            f.write(entries_val)
+            f.close
+        with open(f"{self.domain}.machine_quota.txt", 'r+') as f:
+            machine_val = 0
+            for line in f:
+                if line.startswith('    ms-DS-MachineAccountQuota: '):
+                    machine_quota = line.strip()
+                    print(machine_quota)
+                    machine_val += 1
+                    if machine_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
+                        break
+            f.close()        
 
     def search_groups(self):
         # Query LDAP for groups
