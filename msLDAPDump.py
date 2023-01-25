@@ -1,7 +1,7 @@
 import ipaddress
 import socket
 from getpass import getpass
-from ldap3 import Server, Connection, ALL, SIMPLE, SYNC
+from ldap3 import Server, Connection, ALL, SIMPLE, SYNC, NTLM
 import ldap3
 from colorama import Fore, Style, init
 import sys
@@ -36,6 +36,9 @@ class LDAPSearch:
         print('                   Active Directory LDAP Enumerator          /_/ v1.0')
         print("                     Another Project by TheMayor \n" + self.close)
 
+    def get_ntlm_credentials(self):
+        self.username = input(self.close + 'Enter your username (no domain): ')
+        self.password = input('Enter your NTLM Hash: ')
     def get_credentials(self):
         self.username = input(self.close + 'Enter your username (no domain): ')
         self.password = getpass('Enter your password: ')
@@ -138,6 +141,7 @@ class LDAPSearch:
         self.domain = domain_contents[0]
         self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
         server = Server(str(self.hostname), get_info=ALL)
+        hash_front = "aad3b435b51404eeaad3b435b51404ee:"
         try:
             self.conn = Connection(
                 server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True)
@@ -148,9 +152,77 @@ class LDAPSearch:
             self.authenticated_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.search_users(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
+    def ntlm_bind(self):
+        try:
+            self.dom_con = ipaddress.ip_address(
+                input('\nDomain Controller IP: '))
+            self.t1 = datetime.now()
+            if sys.platform.startswith('win32'):
+                print(
+                    self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+                self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
+                if self.hostname is not None:
+                    print(
+                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+                else:
+                    print(
+                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+                    self.hostname = self.dom_con
+            else:
+                self.hostname = self.dom_con
+        except (ipaddress.AddressValueError, socket.herror):
+            print(
+                self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
+            self.ntlm_bind()
+        except socket.timeout:
+            print(
+                self.info + "[error] Timeout while trying to contact the host. Please try again." + self.close)
+            self.ntlm_bind()
+        server = Server(str(self.dom_con), get_info=ALL)
+        self.conn = Connection(server, auto_bind=True)
+        with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
+            f.write(str(server.info))
+        print(
+            self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
+        with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
+            for line in f:
+                if line.startswith("    DC="):
+                    self.name_context = line.strip()
+                    self.name_context = self.name_context.replace("DC=", "")
+                    self.name_context = self.name_context.replace(",", ".")
+                    print(
+                        self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+                    break
+        self.domain = self.name_context
+        domain_contents = self.domain.split(".")
+        self.domain = domain_contents[0]
+        self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
+        server = Server(str(self.hostname), get_info=ALL)
+        hash_front = "aad3b435b51404eeaad3b435b51404ee:"
+        self.password = f"{hash_front}{self.password}"
+        try:
+            self.conn = Connection(
+                server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
+            self.conn.bind()
+        except ldap3.core.exceptions.LDAPBindError:
+            print(self.info + "Invalid credentials. Please try again." + self.close)
+            self.get_credentials()
+            self.ntlm_bind()
+        print(self.success +
+              f"[success] Connected to {self.hostname}.\n" + self.close)
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+    
+    def laps(self):
+        self.conn.search(f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
+        entries_val = self.conn.entries
+        print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 + '\n This relies on the current user having permissions to read LAPS passwords\n')
+        entries_val = str(entries_val)
+        print(entries_val)
+    
     def search_users(self):
         self.conn.search(
             f'{self.dom_1}', '(&(objectclass=person)(objectCategory=Person))', attributes=ldap3.ALL_ATTRIBUTES)
@@ -175,6 +247,31 @@ class LDAPSearch:
                             f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.')
                         break
             f.close()
+
+    def machine_quota(self):
+        # Query ms-DS-MachineAccountQuota
+        self.conn.search(f'{self.dom_1}', '(objectclass=*)',
+                         attributes=['ms-DS-MachineAccountQuota'])
+        entries_val = self.conn.entries[0]
+        print('\n' + '-'*30 + 'Machine Account Quota' + '-'*29 + '\n')
+        entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.machine_quota.txt"):
+            os.remove(f"{self.domain}.machine_quota.txt")
+        with open(f"{self.domain}.machine_quota.txt", 'w') as f:
+            f.write(entries_val)
+            f.close
+        with open(f"{self.domain}.machine_quota.txt", 'r+') as f:
+            machine_val = 0
+            for line in f:
+                if line.startswith('    ms-DS-MachineAccountQuota: '):
+                    machine_quota = line.strip()
+                    print(machine_quota)
+                    machine_val += 1
+                    if machine_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
+                        break
+            f.close()        
 
     def search_groups(self):
         # Query LDAP for groups
@@ -392,7 +489,7 @@ class LDAPSearch:
 
     def mssql_search(self):
         # Query LDAP for MSSQL Servers
-        self.conn.search(f'{self.dom_1}', '(&(objectCategory=Computer)(servicePrincipalName=MSSQLSvc*))',
+        self.conn.search(f'{self.dom_1}', '(&(sAMAccountType=805306368)(servicePrincipalName=MSSQL*))',
                          attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
         print('\n' + '-'*34 + 'MSSQL Servers' + '-'*33 + '\n')
@@ -550,7 +647,12 @@ class LDAPSearch:
                 self.get_credentials()
                 self.authenticated_bind()
             elif choice == 'N':
-                self.anonymous_bind()
+                choice = input('Use NTLM for binding? (Y/N): ').strip().upper()
+                if choice == 'Y':
+                    self.get_ntlm_credentials()
+                    self.ntlm_bind()
+                else:
+                    self.anonymous_bind()
             else:
                 raise ValueError(self.info + '[error] Invalid choice\n')
         except ValueError as ve:
