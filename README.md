@@ -15,7 +15,7 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 
 ### Credentialed Bind
 
-Users can bind to LDAP utilizing valid user account credentials. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
+Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
 
 * Users
 * Groups
