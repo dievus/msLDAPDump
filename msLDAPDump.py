@@ -152,7 +152,7 @@ class LDAPSearch:
             self.authenticated_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def ntlm_bind(self):
@@ -213,8 +213,16 @@ class LDAPSearch:
             self.ntlm_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+    
+    def laps(self):
+        self.conn.search(f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
+        entries_val = self.conn.entries
+        print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 + '\n This relies on the current user having permissions to read LAPS passwords\n')
+        entries_val = str(entries_val)
+        print(entries_val)
+    
     def search_users(self):
         self.conn.search(
             f'{self.dom_1}', '(&(objectclass=person)(objectCategory=Person))', attributes=ldap3.ALL_ATTRIBUTES)
