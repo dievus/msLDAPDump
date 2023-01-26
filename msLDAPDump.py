@@ -18,6 +18,7 @@ class LDAPSearch:
         self.dom_con = None
         self.name_context = None
         self.dom_1 = None
+        self.dc_val = None
         self.conn = None
         self.domain = None
         self.info = Fore.YELLOW + Style.BRIGHT
@@ -81,15 +82,17 @@ class LDAPSearch:
             for line in f:
                 if line.startswith("    DC="):
                     self.name_context = line.strip()
+                    self.dc_val = (self.name_context.count('DC='))
                     self.name_context = self.name_context.replace("DC=", "")
                     self.name_context = self.name_context.replace(",", ".")
-                    print(
-                        self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
-                    break
+                    if "ForestDnsZones" in self.name_context:
+                        continue
+                    else:
+                        break
         self.domain = self.name_context
         domain_contents = self.domain.split(".")
-        self.domain = domain_contents[0]
-        self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
+        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
+        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
         print(
             self.info + f'[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
         self.t2 = datetime.now()
@@ -135,20 +138,21 @@ class LDAPSearch:
             for line in f:
                 if line.startswith("    DC="):
                     self.name_context = line.strip()
+                    self.dc_val = (self.name_context.count('DC='))
                     self.name_context = self.name_context.replace("DC=", "")
                     self.name_context = self.name_context.replace(",", ".")
-                    print(
-                        self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
-                    break
+                    if "ForestDnsZones" in self.name_context:
+                        continue
+                    else:
+                        break
         self.domain = self.name_context
         domain_contents = self.domain.split(".")
-        self.domain = domain_contents[0]
-        self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
+        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
+        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
         server = Server(str(self.hostname), get_info=ALL)
-        hash_front = "aad3b435b51404eeaad3b435b51404ee:"
         try:
             self.conn = Connection(
-                server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True)
+                server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
             self.conn.bind()
         except ldap3.core.exceptions.LDAPBindError:
             print(self.info + "Invalid credentials. Please try again." + self.close)
@@ -196,15 +200,17 @@ class LDAPSearch:
             for line in f:
                 if line.startswith("    DC="):
                     self.name_context = line.strip()
+                    self.dc_val = (self.name_context.count('DC='))
                     self.name_context = self.name_context.replace("DC=", "")
                     self.name_context = self.name_context.replace(",", ".")
-                    print(
-                        self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
-                    break
+                    if "ForestDnsZones" in self.name_context:
+                        continue
+                    else:
+                        break
         self.domain = self.name_context
         domain_contents = self.domain.split(".")
-        self.domain = domain_contents[0]
-        self.dom_1 = f"DC={domain_contents[0]},DC={domain_contents[1]}"
+        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
+        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
         server = Server(str(self.hostname), get_info=ALL)
         hash_front = "aad3b435b51404eeaad3b435b51404ee:"
         self.password = f"{hash_front}{self.password}"
