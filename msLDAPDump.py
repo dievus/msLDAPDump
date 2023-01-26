@@ -6,7 +6,8 @@ import ldap3
 from colorama import Fore, Style, init
 import sys
 from datetime import datetime
-import os, os.path
+import os
+import os.path
 
 
 class LDAPSearch:
@@ -39,6 +40,7 @@ class LDAPSearch:
     def get_ntlm_credentials(self):
         self.username = input(self.close + 'Enter your username (no domain): ')
         self.password = input('Enter your NTLM Hash: ')
+
     def get_credentials(self):
         self.username = input(self.close + 'Enter your username (no domain): ')
         self.password = getpass('Enter your password: ')
@@ -46,20 +48,21 @@ class LDAPSearch:
     def anonymous_bind(self):
         try:
             dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
+            self.hostname = dom_con
             self.t1 = datetime.now()
-            if sys.platform.startswith('win32'):
-                print(
-                    self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-                self.hostname = socket.gethostbyaddr(str(dom_con))[0]
-                if self.hostname is not None:
-                    print(
-                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-                else:
-                    print(
-                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-                    self.hostname = self.dom_con
-            else:
-                self.hostname = dom_con
+            # if sys.platform.startswith('win32'):
+            #     print(
+            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+            #     self.hostname = socket.gethostbyaddr(str(dom_con))[0]
+            #     if self.hostname is not None:
+            #         print(
+            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+            #     else:
+            #         print(
+            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+            #         self.hostname = self.dom_con
+            # else:
+            #     self.hostname = dom_con
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
@@ -99,20 +102,21 @@ class LDAPSearch:
         try:
             self.dom_con = ipaddress.ip_address(
                 input('\nDomain Controller IP: '))
+            self.hostname = self.dom_con
             self.t1 = datetime.now()
-            if sys.platform.startswith('win32'):
-                print(
-                    self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-                self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
-                if self.hostname is not None:
-                    print(
-                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-                else:
-                    print(
-                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-                    self.hostname = self.dom_con
-            else:
-                self.hostname = self.dom_con
+            # if sys.platform.startswith('win32'):
+            #     print(
+            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+            #     self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
+            #     if self.hostname is not None:
+            #         print(
+            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+            #     else:
+            #         print(
+            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+            #         self.hostname = self.dom_con
+            # else:
+            #     self.hostname = self.dom_con
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
@@ -159,20 +163,21 @@ class LDAPSearch:
         try:
             self.dom_con = ipaddress.ip_address(
                 input('\nDomain Controller IP: '))
+            self.hostname = self.dom_con
             self.t1 = datetime.now()
-            if sys.platform.startswith('win32'):
-                print(
-                    self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-                self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
-                if self.hostname is not None:
-                    print(
-                        self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-                else:
-                    print(
-                        self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-                    self.hostname = self.dom_con
-            else:
-                self.hostname = self.dom_con
+            # if sys.platform.startswith('win32'):
+            #     print(
+            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
+            #     self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
+            #     if self.hostname is not None:
+            #         print(
+            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
+            #     else:
+            #         print(
+            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
+            #         self.hostname = self.dom_con
+            # else:
+            #     self.hostname = self.dom_con
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
@@ -215,15 +220,24 @@ class LDAPSearch:
               f"[success] Connected to {self.hostname}.\n" + self.close)
         self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
-    
+
     def laps(self):
-        self.conn.search(f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
-        entries_val = self.conn.entries
-        print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 + '\n This relies on the current user having permissions to read LAPS passwords\n')
-        entries_val = str(entries_val)
-        print(entries_val)
-    
+        # Check for LAPS passwords accessible to the current user
+
+        print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 +
+              '\n This relies on the current user having permissions to read LAPS passwords\n')
+        try:
+            self.conn.search(
+                f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
+            entries_val = self.conn.entries
+            entries_val = str(entries_val)
+            print(entries_val)
+        except Exception:
+            pass
+
     def search_users(self):
+        # Search domain users
+
         self.conn.search(
             f'{self.dom_1}', '(&(objectclass=person)(objectCategory=Person))', attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
@@ -271,7 +285,7 @@ class LDAPSearch:
                         print(
                             self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
                         break
-            f.close()        
+            f.close()
 
     def search_groups(self):
         # Query LDAP for groups
@@ -299,8 +313,8 @@ class LDAPSearch:
                         break
             f.close()
 
-        # Query LDAP for Kerberoastable users
     def kerberoast_accounts(self):
+        # Query LDAP for Kerberoastable users
         self.conn.search(f'{self.dom_1}', '(&(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512))(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))',
                          attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
@@ -434,6 +448,7 @@ class LDAPSearch:
                         break
             f.close()
         if sys.platform.startswith('win32'):
+            # Runs a check to see if the current system is Windows. In place until the Linux DNS resolution on multiple adapters issue is resolved.
             print(
                 self.info + "\n[info] Let's try to resolve hostnames to IP addresses. This may take some time depending on the number of computers...\n" + self.close)
             with open(f"{self.domain}.computers.txt", 'r+') as f:
