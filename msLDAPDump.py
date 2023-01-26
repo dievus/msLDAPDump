@@ -217,11 +217,14 @@ class LDAPSearch:
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
     
     def laps(self):
-        self.conn.search(f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
-        entries_val = self.conn.entries
         print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 + '\n This relies on the current user having permissions to read LAPS passwords\n')
-        entries_val = str(entries_val)
-        print(entries_val)
+        try:
+            self.conn.search(f'{self.dom_1}', '(ms-MCS-AdmPwd=*)', attributes=['ms-Mcs-AdmPwd'])
+            entries_val = self.conn.entries
+            entries_val = str(entries_val)
+            print(entries_val)
+        except Exception:
+            pass
     
     def search_users(self):
         self.conn.search(
