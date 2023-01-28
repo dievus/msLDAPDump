@@ -151,7 +151,7 @@ class LDAPSearch:
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
         self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
-        ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+        ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def ntlm_bind(self):
         try:
@@ -217,7 +217,7 @@ class LDAPSearch:
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
         self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
-        ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+        ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def laps(self):
         # Check for LAPS passwords accessible to the current user
@@ -532,27 +532,25 @@ class LDAPSearch:
             f.close()
 
     def trusted_domains(self):
-        self.conn.search(f'{self.dom_1}', '(&(objectClass=trusteddDomain))',
+        self.conn.search(f'{self.dom_1}', '(trustPartner=*)',
                          attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
-        print('\n' + '-'*31 + 'Trusted Domains' + '-'*31 + '\n')
+        print('\n' + '-'*33 + 'Trusted Domains' + '-'*33 + '\n')
         entries_val = str(entries_val)
-        print(entries_val)
         if os.path.exists(f"{self.domain}.domaintrusts.txt"):
             os.remove(f"{self.domain}.domaintrusts.txt")
         with open(f"{self.domain}.domaintrusts.txt", 'a') as f:
             f.write(entries_val)
             f.close()
         with open(f"{self.domain}.domaintrusts.txt", 'r+') as f:
-            comp_val = 0
+            trust_val = 0
             for line in f:
-                if line.startswith('    dNSHostName: '):
-                    comp_name = line.strip()
-                    comp_name = comp_name.replace('dNSHostName: ', '')
-                    comp_name = comp_name.replace('$', '')
-                    print(comp_name)
-                    comp_val += 1
-                    if comp_val >= 25:
+                if line.startswith('    trustPartner:'):
+                    trust_name = line.strip()
+                    trust_name = trust_name.replace('trustPartner:', '')
+                    print(trust_name)
+                    trust_val += 1
+                    if trust_val >= 25:
                         print(
                             self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaintrusts.txt for full details.' + self.close)
                         break
