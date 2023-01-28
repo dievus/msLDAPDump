@@ -19,6 +19,7 @@ class LDAPSearch:
         self.name_context = None
         self.dom_1 = None
         self.dc_val = None
+        self.long_dc = None
         self.conn = None
         self.domain = None
         self.info = Fore.YELLOW + Style.BRIGHT
@@ -125,6 +126,7 @@ class LDAPSearch:
             for line in f:
                 if line.startswith("    DC="):
                     self.name_context = line.strip()
+                    self.long_dc = self.name_context
                     self.dc_val = (self.name_context.count('DC='))
                     self.name_context = self.name_context.replace("DC=", "")
                     self.name_context = self.name_context.replace(",", ".")
@@ -134,8 +136,9 @@ class LDAPSearch:
                         break
         self.domain = self.name_context
         domain_contents = self.domain.split(".")
-        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
-        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
+        print(self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+        # print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
+        self.dom_1 = f"{self.long_dc}"
         server = Server(str(self.hostname), get_info=ALL)
         try:
             self.conn = Connection(
@@ -147,7 +150,7 @@ class LDAPSearch:
             self.authenticated_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def ntlm_bind(self):
@@ -187,6 +190,7 @@ class LDAPSearch:
             for line in f:
                 if line.startswith("    DC="):
                     self.name_context = line.strip()
+                    self.long_dc = self.name_context
                     self.dc_val = (self.name_context.count('DC='))
                     self.name_context = self.name_context.replace("DC=", "")
                     self.name_context = self.name_context.replace(",", ".")
@@ -196,8 +200,9 @@ class LDAPSearch:
                         break
         self.domain = self.name_context
         domain_contents = self.domain.split(".")
-        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
-        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
+        print(self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+        # print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
+        self.dom_1 = f"{self.long_dc}"
         server = Server(str(self.hostname), get_info=ALL)
         hash_front = "aad3b435b51404eeaad3b435b51404ee:"
         self.password = f"{hash_front}{self.password}"
@@ -211,7 +216,7 @@ class LDAPSearch:
             self.ntlm_bind()
         print(self.success +
               f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
         ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
     def laps(self):
@@ -276,7 +281,7 @@ class LDAPSearch:
                     machine_val += 1
                     if machine_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.machine_quota.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -306,6 +311,37 @@ class LDAPSearch:
                         break
             f.close()
 
+    def admin_accounts(self):
+        admin_users = []
+        self.conn.search(f'{self.dom_1}', '(&(objectclass=group)(CN=*admin*))',
+                         attributes=['member'])
+        entries_val = self.conn.entries
+        print('\n' + '-'*30 + 'Admin Level Users' + '-'*30 + '\n')
+        entries_val = str(entries_val)
+        # print(entries_val)
+        if os.path.exists(f"{self.domain}.adminusers.txt"):
+            os.remove(f"{self.domain}.adminusers.txt")
+        with open(f"{self.domain}.adminusers.txt", 'w') as f:
+            f.write(entries_val)
+            f.close()
+        with open(f"{self.domain}.adminusers.txt", 'r+') as f:
+            admin_val = 0
+            for line in f:
+                if line.startswith('    member: '):
+                    admin_name = line.strip()
+                    admin_name = admin_name.replace('member: ', '')
+                    if admin_name not in admin_users:
+                        print(admin_name)
+                        admin_users.append(admin_name)
+                        admin_val += 1
+                    else:
+                        pass
+                    if admin_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.adminusers.txt for full details.' + self.close)
+                        break
+            f.close()        
+
     def kerberoast_accounts(self):
         # Query LDAP for Kerberoastable users
         self.conn.search(f'{self.dom_1}', '(&(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512))(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))',
@@ -328,7 +364,7 @@ class LDAPSearch:
                     kerb_val += 1
                     if kerb_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.kerberoast.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -354,7 +390,7 @@ class LDAPSearch:
                     asrep_val += 1
                     if asrep_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.asreproast.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -380,7 +416,7 @@ class LDAPSearch:
                     uncon_val += 1
                     if uncon_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.constrained.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.unconstrained.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -491,10 +527,36 @@ class LDAPSearch:
                     comp_val += 1
                     if comp_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.computers.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaincontrollers.txt for full details.' + self.close)
                         break
             f.close()
 
+    def trusted_domains(self):
+        self.conn.search(f'{self.dom_1}', '(&(objectClass=trusteddDomain))',
+                         attributes=ldap3.ALL_ATTRIBUTES)
+        entries_val = self.conn.entries
+        print('\n' + '-'*31 + 'Trusted Domains' + '-'*31 + '\n')
+        entries_val = str(entries_val)
+        print(entries_val)
+        if os.path.exists(f"{self.domain}.domaintrusts.txt"):
+            os.remove(f"{self.domain}.domaintrusts.txt")
+        with open(f"{self.domain}.domaintrusts.txt", 'a') as f:
+            f.write(entries_val)
+            f.close()
+        with open(f"{self.domain}.domaintrusts.txt", 'r+') as f:
+            comp_val = 0
+            for line in f:
+                if line.startswith('    dNSHostName: '):
+                    comp_name = line.strip()
+                    comp_name = comp_name.replace('dNSHostName: ', '')
+                    comp_name = comp_name.replace('$', '')
+                    print(comp_name)
+                    comp_val += 1
+                    if comp_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaintrusts.txt for full details.' + self.close)
+                        break
+            f.close()
     def mssql_search(self):
         # Query LDAP for MSSQL Servers
         self.conn.search(f'{self.dom_1}', '(&(sAMAccountType=805306368)(servicePrincipalName=MSSQL*))',
