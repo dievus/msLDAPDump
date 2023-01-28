@@ -17,6 +17,7 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 
 Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
 
+* LAPS Passwords
 * Users
 * Groups
 * Kerberoastable Accounts
@@ -25,6 +26,7 @@ Users can bind to LDAP utilizing valid user account credentials or a valid NTLM 
 * Unconstrained Delegation
 * Computer Accounts - will also attempt DNS lookups on the hostname to identify IP addresses
 * Identify Domain Controllers
+* Identify Domain Trusts
 * Identify MSSQL Servers
 * Identify Exchange Servers
 * Group Policy Objects (GPO)
