@@ -8,10 +8,13 @@ import sys
 from datetime import datetime
 import os
 import os.path
+import argparse
+import textwrap
 
 
 class LDAPSearch:
     def __init__(self):
+        self.args = None
         self.username = None
         self.password = None
         self.hostname = None
@@ -19,6 +22,7 @@ class LDAPSearch:
         self.name_context = None
         self.dom_1 = None
         self.dc_val = None
+        self.long_dc = None
         self.conn = None
         self.domain = None
         self.info = Fore.YELLOW + Style.BRIGHT
@@ -38,194 +42,178 @@ class LDAPSearch:
         print('                   Active Directory LDAP Enumerator          /_/ v1.0')
         print("                     Another Project by TheMayor \n" + self.close)
 
-    def get_ntlm_credentials(self):
-        self.username = input(self.close + 'Enter your username (no domain): ')
-        self.password = input('Enter your NTLM Hash: ')
-
-    def get_credentials(self):
-        self.username = input(self.close + 'Enter your username (no domain): ')
-        self.password = getpass('Enter your password: ')
+    def arg_handler(self):
+        opt_parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, epilog=textwrap.dedent(
+            '''Anonymous Bind: python3 msldapdump.py --dc 192.168.1.79\n\nAuthenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --password Password123!\n\nNTLM Authenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --ntlm <hash>\n'''))
+        opt_parser.add_argument(
+            '-a', '--anon', help='Specify anonymous bind checks only.', action='store_true'
+        )
+        opt_parser.add_argument(
+            '-d', '--dc', help='Sets the domain controller IP.', required=True)
+        opt_parser.add_argument(
+            '-u', '--user', help='Sets the username to authenticate with.')
+        opt_parser.add_argument(
+            '-p', '--password', help='Sets the password to authenticate with.')
+        opt_parser.add_argument(
+            '-n', '--ntlm', help='The NTLM hash to use in place of a password.'
+        )
+        self.args = opt_parser.parse_args()
+        if len(sys.argv) == 1:
+            opt_parser.print_help()
+            opt_parser.exit()
+        self.hostname = self.args.dc
+        self.username = self.args.user
+        self.password = self.args.password
 
     def anonymous_bind(self):
         try:
-            dom_con = ipaddress.ip_address(input('\nDomain Controller IP: '))
-            self.hostname = dom_con
             self.t1 = datetime.now()
-            # if sys.platform.startswith('win32'):
-            #     print(
-            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-            #     self.hostname = socket.gethostbyaddr(str(dom_con))[0]
-            #     if self.hostname is not None:
-            #         print(
-            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-            #     else:
-            #         print(
-            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-            #         self.hostname = self.dom_con
-            # else:
-            #     self.hostname = dom_con
+            server = Server(str(self.args.dc), get_info=ALL)
+            self.conn = Connection(server, auto_bind=True)
+            with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
+                f.write(str(server.info))
+            print(
+                self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
+            with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
+                for line in f:
+                    if line.startswith("    DC="):
+                        self.name_context = line.strip()
+                        self.long_dc = self.name_context
+                        self.dc_val = (self.name_context.count('DC='))
+                        self.name_context = self.name_context.replace(
+                            "DC=", "")
+                        self.name_context = self.name_context.replace(",", ".")
+                        if "ForestDnsZones" in self.name_context:
+                            continue
+                        else:
+                            break
+            self.domain = self.name_context
+            domain_contents = self.domain.split(".")
+            print(
+                self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+            self.dom_1 = f"{self.long_dc}"
+            print(
+                self.info + f'[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
+            self.t2 = datetime.now()
+            total = self.t2 - self.t1
+            total = str(total)
+            print(self.info +
+                  f"LDAP enumeration completed in {total}.\n" + self.close)
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
-            self.anonymous_bind()
+            quit()
         except socket.timeout:
             print(
                 self.info + "[error] Timeout while trying to contact the host. Please try again." + self.close)
-            self.anonymous_bind()
-        server = Server(str(dom_con), get_info=ALL)
-        self.conn = Connection(server, auto_bind=True)
-        with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-            f.write(str(server.info))
-        print(
-            self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
-        with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
-            for line in f:
-                if line.startswith("    DC="):
-                    self.name_context = line.strip()
-                    self.dc_val = (self.name_context.count('DC='))
-                    self.name_context = self.name_context.replace("DC=", "")
-                    self.name_context = self.name_context.replace(",", ".")
-                    if "ForestDnsZones" in self.name_context:
-                        continue
-                    else:
-                        break
-        self.domain = self.name_context
-        domain_contents = self.domain.split(".")
-        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
-        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
-        print(
-            self.info + f'[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
-        self.t2 = datetime.now()
-        total = self.t2 - self.t1
-        total = str(total)
-        print(self.info +
-              f"LDAP enumeration completed in {total}.\n" + self.close)
+            quit()
+        except Exception as e:
+            print(self.info + f"[error] - {e}" + self.close)
+            quit()
 
     def authenticated_bind(self):
         try:
-            self.dom_con = ipaddress.ip_address(
-                input('\nDomain Controller IP: '))
-            self.hostname = self.dom_con
             self.t1 = datetime.now()
-            # if sys.platform.startswith('win32'):
-            #     print(
-            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-            #     self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
-            #     if self.hostname is not None:
-            #         print(
-            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-            #     else:
-            #         print(
-            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-            #         self.hostname = self.dom_con
-            # else:
-            #     self.hostname = self.dom_con
+            server = Server(str(self.hostname), get_info=ALL)
+            self.conn = Connection(server, auto_bind=True)
+            with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
+                f.write(str(server.info))
+            print(
+                self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
+            with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
+                for line in f:
+                    if line.startswith("    DC="):
+                        self.name_context = line.strip()
+                        self.long_dc = self.name_context
+                        self.dc_val = (self.name_context.count('DC='))
+                        self.name_context = self.name_context.replace(
+                            "DC=", "")
+                        self.name_context = self.name_context.replace(",", ".")
+                        if "ForestDnsZones" in self.name_context:
+                            continue
+                        else:
+                            break
+            self.domain = self.name_context
+            domain_contents = self.domain.split(".")
+            print(
+                self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+            self.dom_1 = f"{self.long_dc}"
+            server = Server(str(self.hostname), get_info=ALL)
+            try:
+                self.conn = Connection(
+                    server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
+                self.conn.bind()
+            except ldap3.core.exceptions.LDAPBindError:
+                print(self.info + "Invalid credentials. Please try again." + self.close)
+                quit()
+            print(self.success +
+                  f"[success] Connected to {self.hostname}.\n" + self.close)
+            self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+            ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
-            self.authenticated_bind()
+            quit()
         except socket.timeout:
             print(
                 self.info + "[error] Timeout while trying to contact the host. Please try again." + self.close)
-            self.authenticated_bind()
-        server = Server(str(self.dom_con), get_info=ALL)
-        self.conn = Connection(server, auto_bind=True)
-        with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-            f.write(str(server.info))
-        print(
-            self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
-        with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
-            for line in f:
-                if line.startswith("    DC="):
-                    self.name_context = line.strip()
-                    self.dc_val = (self.name_context.count('DC='))
-                    self.name_context = self.name_context.replace("DC=", "")
-                    self.name_context = self.name_context.replace(",", ".")
-                    if "ForestDnsZones" in self.name_context:
-                        continue
-                    else:
-                        break
-        self.domain = self.name_context
-        domain_contents = self.domain.split(".")
-        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
-        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
-        server = Server(str(self.hostname), get_info=ALL)
-        try:
-            self.conn = Connection(
-                server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
-            self.conn.bind()
-        except ldap3.core.exceptions.LDAPBindError:
-            print(self.info + "Invalid credentials. Please try again." + self.close)
-            self.get_credentials()
-            self.authenticated_bind()
-        print(self.success +
-              f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
-        ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+            quit()
+        except Exception as e:
+            print(self.info + f"[error] - {e}" + self.close)
+            quit()
 
     def ntlm_bind(self):
         try:
-            self.dom_con = ipaddress.ip_address(
-                input('\nDomain Controller IP: '))
-            self.hostname = self.dom_con
             self.t1 = datetime.now()
-            # if sys.platform.startswith('win32'):
-            #     print(
-            #         self.info + "\nLet's try to find a hostname for the domain controller..." + self.close)
-            #     self.hostname = socket.gethostbyaddr(str(self.dom_con))[0]
-            #     if self.hostname is not None:
-            #         print(
-            #             self.success + '\n[success] Target hostname is ' + self.hostname + '\n' + self.close)
-            #     else:
-            #         print(
-            #             self.info + '[warn] Could not identify target hostname. Continuing...\n' + self.closee)
-            #         self.hostname = self.dom_con
-            # else:
-            #     self.hostname = self.dom_con
+            server = Server(str(self.hostname), get_info=ALL)
+            self.conn = Connection(server, auto_bind=True)
+            with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
+                f.write(str(server.info))
+            print(
+                self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
+            with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
+                for line in f:
+                    if line.startswith("    DC="):
+                        self.name_context = line.strip()
+                        self.long_dc = self.name_context
+                        self.dc_val = (self.name_context.count('DC='))
+                        self.name_context = self.name_context.replace(
+                            "DC=", "")
+                        self.name_context = self.name_context.replace(",", ".")
+                        if "ForestDnsZones" in self.name_context:
+                            continue
+                        else:
+                            break
+            self.domain = self.name_context
+            domain_contents = self.domain.split(".")
+            print(
+                self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
+            self.dom_1 = f"{self.long_dc}"
+            server = Server(str(self.hostname), get_info=ALL)
+            try:
+                self.conn = Connection(
+                    server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
+                self.conn.bind()
+            except ldap3.core.exceptions.LDAPBindError:
+                print(self.info + "Invalid credentials. Please try again." + self.close)
+                quit()
+
+            print(self.success +
+                  f"[success] Connected to {self.hostname}.\n" + self.close)
+            self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+            ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
         except (ipaddress.AddressValueError, socket.herror):
             print(
                 self.info + "[error] Invalid IP Address or unable to contact host. Please try again." + self.close)
-            self.ntlm_bind()
+            quit()
         except socket.timeout:
             print(
                 self.info + "[error] Timeout while trying to contact the host. Please try again." + self.close)
-            self.ntlm_bind()
-        server = Server(str(self.dom_con), get_info=ALL)
-        self.conn = Connection(server, auto_bind=True)
-        with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-            f.write(str(server.info))
-        print(
-            self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
-        with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
-            for line in f:
-                if line.startswith("    DC="):
-                    self.name_context = line.strip()
-                    self.dc_val = (self.name_context.count('DC='))
-                    self.name_context = self.name_context.replace("DC=", "")
-                    self.name_context = self.name_context.replace(",", ".")
-                    if "ForestDnsZones" in self.name_context:
-                        continue
-                    else:
-                        break
-        self.domain = self.name_context
-        domain_contents = self.domain.split(".")
-        print(self.success + f"[success] Possible domain name found - {domain_contents[self.dc_val - 2]}.{domain_contents[self.dc_val - 1]}\n" + self.close)
-        self.dom_1 = f"DC={domain_contents[self.dc_val - 2]},DC={domain_contents[self.dc_val - 1]}"
-        server = Server(str(self.hostname), get_info=ALL)
-        hash_front = "aad3b435b51404eeaad3b435b51404ee:"
-        self.password = f"{hash_front}{self.password}"
-        try:
-            self.conn = Connection(
-                server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
-            self.conn.bind()
-        except ldap3.core.exceptions.LDAPBindError:
-            print(self.info + "Invalid credentials. Please try again." + self.close)
-            self.get_credentials()
-            self.ntlm_bind()
-        print(self.success +
-              f"[success] Connected to {self.hostname}.\n" + self.close)
-        self.laps(), self.search_users(), self.machine_quota(), self.search_groups(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
-        ), self.computer_search(), self.ad_search(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
+            quit()
+        except Exception as e:
+            print(self.info + f"[error] - {e}" + self.close)
+            quit()
 
     def laps(self):
         # Check for LAPS passwords accessible to the current user
@@ -289,7 +277,7 @@ class LDAPSearch:
                     machine_val += 1
                     if machine_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.machine_quota.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -319,6 +307,40 @@ class LDAPSearch:
                         break
             f.close()
 
+    def admin_accounts(self):
+        admin_users = []
+        self.conn.search(f'{self.dom_1}', '(&(objectclass=group)(CN=*admin*))',
+                         attributes=['member'])
+        entries_val = str(self.conn.entries)
+        self.conn.search(f'{self.dom_1}', '(&(objectclass=group)(CN=*operator*))',
+                         attributes=['member'])
+        print('\n' + '-'*30 + 'Admin Level Users' + '-'*30 + '\n')
+        entries_val1 = str(self.conn.entries)
+        # print(entries_val)
+        if os.path.exists(f"{self.domain}.adminusers.txt"):
+            os.remove(f"{self.domain}.adminusers.txt")
+        with open(f"{self.domain}.adminusers.txt", 'w') as f:
+            f.write(entries_val)
+            f.write(entries_val1)
+            f.close()
+        with open(f"{self.domain}.adminusers.txt", 'r+') as f:
+            admin_val = 0
+            for line in f:
+                if line.startswith('    member: '):
+                    admin_name = line.strip()
+                    admin_name = admin_name.replace('member: ', '')
+                    if admin_name not in admin_users:
+                        print(admin_name)
+                        admin_users.append(admin_name)
+                        admin_val += 1
+                    else:
+                        pass
+                    if admin_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.adminusers.txt for full details.' + self.close)
+                        break
+            f.close()
+
     def kerberoast_accounts(self):
         # Query LDAP for Kerberoastable users
         self.conn.search(f'{self.dom_1}', '(&(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512))(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))',
@@ -341,7 +363,7 @@ class LDAPSearch:
                     kerb_val += 1
                     if kerb_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.kerberoast.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -367,7 +389,7 @@ class LDAPSearch:
                     asrep_val += 1
                     if asrep_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.asreproast.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -393,7 +415,7 @@ class LDAPSearch:
                     uncon_val += 1
                     if uncon_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.constrained.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.unconstrained.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -504,7 +526,32 @@ class LDAPSearch:
                     comp_val += 1
                     if comp_val >= 25:
                         print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.computers.txt for full details.' + self.close)
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaincontrollers.txt for full details.' + self.close)
+                        break
+            f.close()
+
+    def trusted_domains(self):
+        self.conn.search(f'{self.dom_1}', '(trustPartner=*)',
+                         attributes=ldap3.ALL_ATTRIBUTES)
+        entries_val = self.conn.entries
+        print('\n' + '-'*33 + 'Trusted Domains' + '-'*32 + '\n')
+        entries_val = str(entries_val)
+        if os.path.exists(f"{self.domain}.domaintrusts.txt"):
+            os.remove(f"{self.domain}.domaintrusts.txt")
+        with open(f"{self.domain}.domaintrusts.txt", 'a') as f:
+            f.write(entries_val)
+            f.close()
+        with open(f"{self.domain}.domaintrusts.txt", 'r+') as f:
+            trust_val = 0
+            for line in f:
+                if line.startswith('    trustPartner:'):
+                    trust_name = line.strip()
+                    trust_name = trust_name.replace('trustPartner:', '')
+                    print(trust_name.strip())
+                    trust_val += 1
+                    if trust_val >= 25:
+                        print(
+                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaintrusts.txt for full details.' + self.close)
                         break
             f.close()
 
@@ -660,22 +707,17 @@ class LDAPSearch:
 
     def run(self):
         init()
-        ldap_search.banner()
         try:
-            choice = input(
-                'Use credentials for binding? (Y/N): ').strip().upper()
-            if choice == 'Y':
-                self.get_credentials()
+            ldap_search.banner()
+            self.arg_handler()
+            if self.args.anon:
+                self.anonymous_bind()
+            elif self.args.ntlm:
+                self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
+                self.ntlm_bind()
+            elif self.args.password:
+                self.password = self.args.password
                 self.authenticated_bind()
-            elif choice == 'N':
-                choice = input('Use NTLM for binding? (Y/N): ').strip().upper()
-                if choice == 'Y':
-                    self.get_ntlm_credentials()
-                    self.ntlm_bind()
-                else:
-                    self.anonymous_bind()
-            else:
-                raise ValueError(self.info + '[error] Invalid choice\n')
         except ValueError as ve:
             print(ve)
             self.run()
