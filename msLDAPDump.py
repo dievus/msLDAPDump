@@ -44,19 +44,21 @@ class LDAPSearch:
 
     def arg_handler(self):
         opt_parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, epilog=textwrap.dedent(
-            '''Anonymous Bind: python3 msldapdump.py --dc 192.168.1.79\n\nAuthenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --password Password123!\n\nNTLM Authenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --ntlm <hash>\n'''))
-        opt_parser.add_argument(
+            '''Anonymous Bind: python3 msldapdump.py -a --dc 192.168.1.79\n\nAuthenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --password Password123!\n\nNTLM Authenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --ntlm <hash>\n'''))
+        opt_parser_target = opt_parser.add_argument_group('Target')
+        opt_parser_target.add_argument(
+            '-d', '--dc', help='Sets the domain controller IP. (Required)', required=True)
+        opt_parser_anon = opt_parser.add_argument_group('Anonymous Bind')
+        opt_parser_anon.add_argument(
             '-a', '--anon', help='Specify anonymous bind checks only.', action='store_true'
         )
-        opt_parser.add_argument(
-            '-d', '--dc', help='Sets the domain controller IP.', required=True)
-        opt_parser.add_argument(
+        opt_parser_auth = opt_parser.add_argument_group('Authenticated Bind')
+        opt_parser_auth.add_argument(
             '-u', '--user', help='Sets the username to authenticate with.')
-        opt_parser.add_argument(
+        opt_parser_auth.add_argument(
             '-p', '--password', help='Sets the password to authenticate with.')
-        opt_parser.add_argument(
-            '-n', '--ntlm', help='The NTLM hash to use in place of a password.'
-        )
+        opt_parser_auth.add_argument(
+            '-n', '--ntlm', help='The NTLM hash to use in place of a password.')
         self.args = opt_parser.parse_args()
         if len(sys.argv) == 1:
             opt_parser.print_help()
@@ -724,6 +726,7 @@ class LDAPSearch:
         except KeyboardInterrupt:
             print(
                 self.info + '\n[info] You either fat fingered this or something else. Either way, quitting...\n' + self.close)
+
 
 ldap_search = LDAPSearch()
 ldap_search.run()
