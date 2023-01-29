@@ -725,6 +725,5 @@ class LDAPSearch:
             print(
                 self.info + '\n[info] You either fat fingered this or something else. Either way, quitting...\n' + self.close)
 
-
 ldap_search = LDAPSearch()
 ldap_search.run()
