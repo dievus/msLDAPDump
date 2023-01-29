@@ -315,14 +315,17 @@ class LDAPSearch:
         admin_users = []
         self.conn.search(f'{self.dom_1}', '(&(objectclass=group)(CN=*admin*))',
                          attributes=['member'])
-        entries_val = self.conn.entries
+        entries_val = str(self.conn.entries)
+        self.conn.search(f'{self.dom_1}', '(&(objectclass=group)(CN=*operator*))',
+                         attributes=['member'])
         print('\n' + '-'*30 + 'Admin Level Users' + '-'*30 + '\n')
-        entries_val = str(entries_val)
+        entries_val1 = str(self.conn.entries)
         # print(entries_val)
         if os.path.exists(f"{self.domain}.adminusers.txt"):
             os.remove(f"{self.domain}.adminusers.txt")
         with open(f"{self.domain}.adminusers.txt", 'w') as f:
             f.write(entries_val)
+            f.write(entries_val1)
             f.close()
         with open(f"{self.domain}.adminusers.txt", 'r+') as f:
             admin_val = 0
@@ -535,7 +538,7 @@ class LDAPSearch:
         self.conn.search(f'{self.dom_1}', '(trustPartner=*)',
                          attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
-        print('\n' + '-'*33 + 'Trusted Domains' + '-'*33 + '\n')
+        print('\n' + '-'*33 + 'Trusted Domains' + '-'*32 + '\n')
         entries_val = str(entries_val)
         if os.path.exists(f"{self.domain}.domaintrusts.txt"):
             os.remove(f"{self.domain}.domaintrusts.txt")
@@ -548,7 +551,7 @@ class LDAPSearch:
                 if line.startswith('    trustPartner:'):
                     trust_name = line.strip()
                     trust_name = trust_name.replace('trustPartner:', '')
-                    print(trust_name)
+                    print(trust_name.strip())
                     trust_val += 1
                     if trust_val >= 25:
                         print(
