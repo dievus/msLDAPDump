@@ -40,7 +40,7 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 
 
 
-- [ ] Add support for LDAPS (LDAP Secure)
+- [X] Add support for LDAPS (LDAP Secure)
 - [X] NTLM Authentication
 - [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
 - [X] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
