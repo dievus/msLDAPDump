@@ -18,6 +18,7 @@ class LDAPSearch:
         self.username = None
         self.password = None
         self.hostname = None
+        self.server = None
         self.dom_con = None
         self.name_context = None
         self.dom_1 = None
@@ -70,10 +71,16 @@ class LDAPSearch:
     def anonymous_bind(self):
         try:
             self.t1 = datetime.now()
-            server = Server(str(self.args.dc), get_info=ALL)
-            self.conn = Connection(server, auto_bind=True)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            socket.setdefaulttimeout(5)
+            try:
+                s.connect(self.hostname, 636)
+                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+            except:
+                self.server = Server(str(self.hostname), get_info=ALL)
+            self.conn = Connection(self.server, auto_bind=True)
             with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-                f.write(str(server.info))
+                f.write(str(self.server.info))
             print(
                 self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
             with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
@@ -116,10 +123,16 @@ class LDAPSearch:
     def authenticated_bind(self):
         try:
             self.t1 = datetime.now()
-            server = Server(str(self.hostname), get_info=ALL)
-            self.conn = Connection(server, auto_bind=True)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            socket.setdefaulttimeout(5)
+            try:
+                s.connect(self.hostname, 636)
+                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+            except:
+                self.server = Server(str(self.hostname), get_info=ALL)
+            self.conn = Connection(self.server, auto_bind=True)
             with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-                f.write(str(server.info))
+                f.write(str(self.server.info))
             print(
                 self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
             with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
@@ -140,10 +153,10 @@ class LDAPSearch:
             print(
                 self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
             self.dom_1 = f"{self.long_dc}"
-            server = Server(str(self.hostname), get_info=ALL)
+            # server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
             try:
                 self.conn = Connection(
-                    server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
+                    self.server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
                 self.conn.bind()
             except ldap3.core.exceptions.LDAPBindError:
                 print(self.info + "Invalid credentials. Please try again." + self.close)
@@ -168,10 +181,16 @@ class LDAPSearch:
     def ntlm_bind(self):
         try:
             self.t1 = datetime.now()
-            server = Server(str(self.hostname), get_info=ALL)
-            self.conn = Connection(server, auto_bind=True)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            socket.setdefaulttimeout(5)
+            try:
+                s.connect(self.hostname, 636)
+                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+            except:
+                self.server = Server(str(self.hostname), get_info=ALL)
+            self.conn = Connection(self.server, auto_bind=True)
             with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
-                f.write(str(server.info))
+                f.write(str(self.server.info))
             print(
                 self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
             with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
@@ -192,10 +211,9 @@ class LDAPSearch:
             print(
                 self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
             self.dom_1 = f"{self.long_dc}"
-            server = Server(str(self.hostname), get_info=ALL)
             try:
                 self.conn = Connection(
-                    server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
+                    self.server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
                 self.conn.bind()
             except ldap3.core.exceptions.LDAPBindError:
                 print(self.info + "Invalid credentials. Please try again." + self.close)
