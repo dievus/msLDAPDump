@@ -21,7 +21,7 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 <p align="center">
   <img src="https://github.com/dievus/msLDAPDump/blob/main/images/ntlmbind.png" width="847" height="248"/>
 </p>
-Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
+Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following: 
 
 * Basic Domain Info (Current user permissions, domain SID, password policy, machine account quota)
 * Users
