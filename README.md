@@ -21,7 +21,7 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 <p align="center">
   <img src="https://github.com/dievus/msLDAPDump/blob/main/images/ntlmbind.png" width="847" height="248"/>
 </p>
-Users can bind to LDAP utilizing valid user account credentials. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
+Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
 
 * Users
 * Groups
@@ -38,15 +38,12 @@ Users can bind to LDAP utilizing valid user account credentials. Using credentia
 
 Each check outputs the raw contents to a text file, and an abbreviated, cleaner version of the results in the terminal environment. The results in the terminal are pulled from the individual text files.
 
-
-
 - [X] Add support for LDAPS (LDAP Secure)
 - [X] NTLM Authentication
 - [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
 - [X] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
-- [ ] Figure out how to link the name to the Description field dump at the end of the script
+- [X] Figure out how to link the name to the Description field dump at the end of the script
 - [X] Implement command line options rather than inputs 
-
 
 ### Mandatory Disclaimer
 Please keep in mind that this tool is meant for ethical hacking and penetration testing purposes only. I do not condone any behavior that would include testing targets that you do not currently have permission to test against.
