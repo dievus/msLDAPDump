@@ -1,7 +1,6 @@
 import ipaddress
 import socket
-from getpass import getpass
-from ldap3 import Server, Connection, ALL, SIMPLE, SYNC, NTLM
+from ldap3 import Server, Connection, ALL, NTLM
 import ldap3
 from colorama import Fore, Style, init
 import sys
@@ -75,7 +74,8 @@ class LDAPSearch:
             socket.setdefaulttimeout(5)
             try:
                 s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+                self.server = Server(str(self.hostname),
+                                     port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
             self.conn = Connection(self.server, auto_bind=True)
@@ -127,7 +127,8 @@ class LDAPSearch:
             socket.setdefaulttimeout(5)
             try:
                 s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+                self.server = Server(str(self.hostname),
+                                     port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
             self.conn = Connection(self.server, auto_bind=True)
@@ -185,7 +186,8 @@ class LDAPSearch:
             socket.setdefaulttimeout(5)
             try:
                 s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname), port=636, use_ssl=True, get_info=ALL)
+                self.server = Server(str(self.hostname),
+                                     port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
             self.conn = Connection(self.server, auto_bind=True)
@@ -262,19 +264,8 @@ class LDAPSearch:
         with open(f"{self.domain}.users.txt", 'w') as f:
             f.write(entries_val)
             f.close
-        with open(f"{self.domain}.users.txt", 'r+') as f:
-            user_val = 0
-            for line in f:
-                if line.startswith('    sAMAccountName: '):
-                    sam_name = line.strip()
-                    sam_name = sam_name.replace('sAMAccountName: ', '')
-                    print(sam_name)
-                    user_val += 1
-                    if user_val >= 25:
-                        print(
-                            f'\n[info] Truncating results at 25. Check {self.domain}.users.txt for full details.')
-                        break
-            f.close()
+        for users in self.conn.entries:
+            print(users.sAMAccountName)
 
     def machine_quota(self):
         # Query ms-DS-MachineAccountQuota
@@ -308,24 +299,13 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*37 + 'Groups' + '-'*37 + '\n')
         entries_val = str(entries_val)
+        for group in self.conn.entries:
+            print(group.sAMAccountName)
         if os.path.exists(f"{self.domain}.groups.txt"):
             os.remove(f"{self.domain}.groups.txt")
         with open(f"{self.domain}.groups.txt", 'w') as f:
             f.write(entries_val)
             f.close
-        with open(f"{self.domain}.groups.txt", 'r+') as f:
-            group_val = 0
-            for line in f:
-                if line.startswith('    name: '):
-                    group_name = line.strip()
-                    group_name = group_name.replace('name: ', '')
-                    print(group_name)
-                    group_val += 1
-                    if group_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.groups.txt for full details.' + self.close)
-                        break
-            f.close()
 
     def admin_accounts(self):
         admin_users = []
@@ -364,27 +344,16 @@ class LDAPSearch:
     def kerberoast_accounts(self):
         # Query LDAP for Kerberoastable users
         self.conn.search(f'{self.dom_1}', '(&(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512))(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))',
-                         attributes=ldap3.ALL_ATTRIBUTES)
+                         attributes=[ldap3.ALL_ATTRIBUTES])
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'Kerberoastable Users' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        for kerb_users in self.conn.entries:
+            print(kerb_users.sAMAccountName)
         if os.path.exists(f"{self.domain}.kerberoast.txt"):
             os.remove(f"{self.domain}.kerberoast.txt")
         with open(f"{self.domain}.kerberoast.txt", 'w') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.kerberoast.txt", 'r+') as f:
-            kerb_val = 0
-            for line in f:
-                if line.startswith('    sAMAccountName: '):
-                    kerb_name = line.strip()
-                    kerb_name = kerb_name.replace('sAMAccountName: ', '')
-                    print(kerb_name)
-                    kerb_val += 1
-                    if kerb_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.kerberoast.txt for full details.' + self.close)
-                        break
             f.close()
 
     def aspreproast_accounts(self):
@@ -394,23 +363,12 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'ASREPRoastable Users' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        for asrep_users in self.conn.entries:
+            print(asrep_users.sAMAccountName)
         if os.path.exists(f"{self.domain}.asreproast.txt"):
             os.remove(f"{self.domain}.asreproast.txt")
         with open(f"{self.domain}.asreproast.txt", 'w') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.asreproast.txt", 'r+') as f:
-            asrep_val = 0
-            for line in f:
-                if line.startswith('    sAMAccountName: '):
-                    asrep_name = line.strip()
-                    asrep_name = asrep_name.replace('sAMAccountName: ', '')
-                    print(asrep_name)
-                    asrep_val += 1
-                    if asrep_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.asreproast.txt for full details.' + self.close)
-                        break
             f.close()
 
     def unconstrained_search(self):
@@ -476,24 +434,12 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*36 + 'Computers' + '-'*35 + '\n')
         entries_val = str(entries_val)
+        for comp_account in self.conn.entries:
+            print(comp_account.sAMAccountName)
         if os.path.exists(f"{self.domain}.computers.txt"):
             os.remove(f"{self.domain}.computers.txt")
         with open(f"{self.domain}.computers.txt", 'a') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.computers.txt", 'r+') as f:
-            comp_val = 0
-            for line in f:
-                if line.startswith('    sAMAccountName: '):
-                    comp_name = line.strip()
-                    comp_name = comp_name.replace('sAMAccountName: ', '')
-                    comp_name = comp_name.replace('$', '')
-                    print(comp_name)
-                    comp_val += 1
-                    if comp_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.computers.txt for full details.' + self.close)
-                        break
             f.close()
         if sys.platform.startswith('win32'):
             # Runs a check to see if the current system is Windows. In place until the Linux DNS resolution on multiple adapters issue is resolved.
@@ -514,11 +460,6 @@ class LDAPSearch:
                                 continue
                         except socket.gaierror:
                             pass
-                        comp_val1 += 1
-                        if comp_val1 >= 25:
-                            print(
-                                self.info + f'\n[info] Truncating results at 25. Check {self.domain}.computers.txt for full details.' + self.close)
-                            break
                 f.close()
         else:
             pass
@@ -530,24 +471,12 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*31 + 'Domain Controllers' + '-'*31 + '\n')
         entries_val = str(entries_val)
+        for dc_accounts in self.conn.entries:
+            print(dc_accounts.dNSHostName)
         if os.path.exists(f"{self.domain}.domaincontrollers.txt"):
             os.remove(f"{self.domain}.domaincontrollers.txt")
         with open(f"{self.domain}.domaincontrollers.txt", 'a') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.domaincontrollers.txt", 'r+') as f:
-            comp_val = 0
-            for line in f:
-                if line.startswith('    dNSHostName: '):
-                    comp_name = line.strip()
-                    comp_name = comp_name.replace('dNSHostName: ', '')
-                    comp_name = comp_name.replace('$', '')
-                    print(comp_name)
-                    comp_val += 1
-                    if comp_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaincontrollers.txt for full details.' + self.close)
-                        break
             f.close()
 
     def trusted_domains(self):
@@ -556,23 +485,20 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*33 + 'Trusted Domains' + '-'*32 + '\n')
         entries_val = str(entries_val)
+        for trust_vals in self.conn.entries:
+            if trust_vals.trustDirection == 0:
+                trust_id = "Disabled"
+            if trust_vals.trustDirection == 1:
+                trust_id = "<- Inbound"
+            if trust_vals.trustDirection == 2:
+                trust_id = "-> Outbound"
+            if trust_vals.trustDirection == 3:
+                trust_id = "<-> Bi-Directional"
+                print(f"{trust_id} trust with {trust_vals.trustPartner}")
         if os.path.exists(f"{self.domain}.domaintrusts.txt"):
             os.remove(f"{self.domain}.domaintrusts.txt")
         with open(f"{self.domain}.domaintrusts.txt", 'a') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.domaintrusts.txt", 'r+') as f:
-            trust_val = 0
-            for line in f:
-                if line.startswith('    trustPartner:'):
-                    trust_name = line.strip()
-                    trust_name = trust_name.replace('trustPartner:', '')
-                    print(trust_name.strip())
-                    trust_val += 1
-                    if trust_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25. Check {self.domain}.domaintrusts.txt for full details.' + self.close)
-                        break
             f.close()
 
     def mssql_search(self):
@@ -636,27 +562,12 @@ class LDAPSearch:
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'Group Policy Objects' + '-'*30 + '\n')
         entries_val = str(entries_val)
+        for gpo_val in self.conn.entries:
+            print(f"GPO name: {gpo_val.displayName}\nGPO File Path: {gpo_val.gPCFileSysPath}\n")
         if os.path.exists(f"{self.domain}.GPO.txt"):
             os.remove(f"{self.domain}.GPO.txt")
         with open(f"{self.domain}.GPO.txt", 'a') as f:
             f.write(entries_val)
-            f.close()
-        with open(f"{self.domain}.GPO.txt", 'r+') as f:
-            gpo_val = 0
-            for line in f:
-                if line.startswith('    displayName: '):
-                    gpo_name = line.strip()
-                    gpo_name = gpo_name.replace('displayName: ', 'GPO Name: ')
-                if line.startswith('    gPCFileSysPath: '):
-                    gpcname = line.strip()
-                    gpcname = gpcname.replace(
-                        'gPCFileSysPath: ', 'GPO File Path: ')
-                    print(f'{gpo_name}\n{gpcname}')
-                    gpo_val += 1
-                    if gpo_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25 users. Check {self.domain}.constrained.txt for full details.' + self.close)
-                        break
             f.close()
 
     def admin_count_search(self):
@@ -667,63 +578,38 @@ class LDAPSearch:
         print('\n' + '-'*30 + 'Protected Admin Users' + '-'*29 +
               '\nThese are user accounts with adminCount=1 set\n')
         entries_val = str(entries_val)
+        for admin_count_val in self.conn.entries:
+            print(admin_count_val.name)
         if os.path.exists(f"{self.domain}.admincount.txt"):
             os.remove(f"{self.domain}.admincount.txt")
         with open(f"{self.domain}.admincount.txt", 'a') as f:
             f.write(entries_val)
             f.close()
-        with open(f"{self.domain}.admincount.txt", 'r+') as f:
-            gpo_val = 0
-            for line in f:
-                if line.startswith('    sAMAccountName: '):
-                    admin_name = line.strip()
-                    admin_name = admin_name.replace('sAMAccountName: ', '')
-                    print(admin_name)
-                    gpo_val += 1
-                    if gpo_val >= 25:
-                        print(
-                            self.info + f'\n[info] Truncating results at 25 users. Check {self.domain}.admincount.txt for full details.' + self.close)
-                        break
-        f.close()
-        self.conn.unbind()
         print(
             self.success + f'\n[success] Information dump completed. Text files containing raw data have been placed in this directory for your review.\n' + self.close)
 
     def find_fields(self):
-        descript_info = []
-        idx = 0
         print(
-            self.info + '\n[info] Checking the output for information in description fields.\n' + self.close)
-        with open(f'{self.domain}.users.txt', 'r') as refile:
-            lines = refile.readlines()
-            for line in lines:
-                descriptions = "description:"
-                if descriptions in line:
-                    if "Built-in" in line or "Key Distribution Center Service Account" in line:
-                        pass
-                    else:
-                        line = line.replace('description: ', '')
-                        descript_info.insert(idx, line)
-                        idx += 1
-        refile.close()
-        if len(descript_info) == 0:
-            print(
-                self.info + '[info] No information identified based on static parameters. Check the output file manually. Quitting...' + self.close)
-            quit()
-        else:
-            lineLen = len(descript_info)
-            print(
-                self.success + '[success] Dumped the following information from object descriptions - Check text file for full details\n' + self.close)
-            for i in range(lineLen):
-                end = descript_info[i]
-                print(self.info + f'{end}')
-            # print()
-            self.t2 = datetime.now()
-            total = self.t2 - self.t1
-            total = str(total)
-            print(self.info +
-                  f"LDAP enumeration completed in {total}.\n" + self.close)
-            quit()
+            self.info + '\n[info] Checking user descriptions for interesting information.\n' + self.close)
+        self.conn.search(f"{self.dom_1}", '(&(objectClass=person)(objectCategory=Person))', attributes=['sAMAccountname', 'description'])
+        for entry in self.conn.entries:
+            if entry.description == 'Built-in account for administering the computer/domain':
+                pass
+            if entry.description == 'Built-in account for guest access to the computer/domain':
+                pass
+            val1 = str(entry.description)
+            val2 = str(entry.sAMAccountname)
+            pass_val = 'pass'
+            val3 = val1.lower()
+            if pass_val in val3:
+                print(self.success + f'User: {val2} - Description: {val1}' + self.close)   
+
+        self.t2 = datetime.now()
+        total = self.t2 - self.t1
+        total = str(total)
+        print(self.info +
+                f"\nLDAP enumeration completed in {total}.\n" + self.close)
+        quit()
 
     def run(self):
         init()
@@ -738,6 +624,7 @@ class LDAPSearch:
             elif self.args.password:
                 self.password = self.args.password
                 self.authenticated_bind()
+            self.conn.unbind()
         except ValueError as ve:
             print(ve)
             self.run()
