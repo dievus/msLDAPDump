@@ -23,6 +23,7 @@ Users can bind to LDAP anonymously through the tool and dump basic information a
 </p>
 Users can bind to LDAP utilizing valid user account credentials or a valid NTLM hash. Using credentials will obtain the same information as the anonymously binded request, as well as checking for the following:
 
+* Basic Domain Info (Current user permissions, domain SID, password policy, machine account quota)
 * Users
 * Groups
 * Kerberoastable Accounts
@@ -31,6 +32,8 @@ Users can bind to LDAP utilizing valid user account credentials or a valid NTLM 
 * Unconstrained Delegation
 * Computer Accounts - will also attempt DNS lookups on the hostname to identify IP addresses
 * Identify Domain Controllers
+* Identify Servers
+* Identify Deprecated Operating Systems
 * Identify MSSQL Servers
 * Identify Exchange Servers
 * Group Policy Objects (GPO)
@@ -38,12 +41,12 @@ Users can bind to LDAP utilizing valid user account credentials or a valid NTLM 
 
 Each check outputs the raw contents to a text file, and an abbreviated, cleaner version of the results in the terminal environment. The results in the terminal are pulled from the individual text files.
 
-- [ ] Add support for LDAPS (LDAP Secure)
+- [X] Add support for LDAPS (LDAP Secure)
 - [X] NTLM Authentication
 - [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
 - [X] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
-- [ ] Figure out how to link the name to the Description field dump at the end of the script
+- [X] Figure out how to link the name to the Description field dump at the end of the script
 - [X] Implement command line options rather than inputs 
-
+- [X] Check for deprecated operating systems in the domain
 ### Mandatory Disclaimer
 Please keep in mind that this tool is meant for ethical hacking and penetration testing purposes only. I do not condone any behavior that would include testing targets that you do not currently have permission to test against.
