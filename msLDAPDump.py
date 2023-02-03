@@ -291,7 +291,7 @@ class LDAPSearch:
                 pass_complexity = "Enabled"
             elif entries.pwdProperties == 0:
                 pass_complexity = "Disabled"
-            print(f"Domain GUID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
+            print(f"\nDomain Info:\nDomain GUID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
 
     def laps(self):
         # Check for LAPS passwords accessible to the current user
@@ -680,9 +680,9 @@ class LDAPSearch:
                 pass
             val1 = str(entry.description)
             val2 = str(entry.sAMAccountname)
-            pass_val = 'pass'
+            # pass_val = 'pass'
             val3 = val1.lower()
-            if pass_val in val3:
+            if "pass" in val3 or "pwd" in val3 or "cred" in val3 or "ldap3" in val3:
                 print(self.success +
                       f'User: {val2} - Description: {val1}' + self.close)
 
