@@ -16,6 +16,7 @@ class LDAPSearch:
         self.args = None
         self.username = None
         self.password = None
+        self.hash = None
         self.hostname = None
         self.server = None
         self.dom_con = None
@@ -67,6 +68,7 @@ class LDAPSearch:
         self.hostname = self.args.dc
         self.username = self.args.user
         self.password = self.args.password
+        self.hash = self.args.ntlm
 
     def anonymous_bind(self):
         try:
@@ -75,7 +77,8 @@ class LDAPSearch:
             socket.setdefaulttimeout(5)
             try:
                 s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname),
+                server_val = f'ldaps://{self.hostname}:636'
+                self.server = Server(str(f'{server_val}'),
                                      port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
@@ -127,8 +130,8 @@ class LDAPSearch:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             socket.setdefaulttimeout(5)
             try:
-                s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname),
+                server_val = f'ldaps://{self.hostname}:636'
+                self.server = Server(str(f'{server_val}'),
                                      port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
@@ -197,8 +200,8 @@ class LDAPSearch:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             socket.setdefaulttimeout(5)
             try:
-                s.connect(self.hostname, 636)
-                self.server = Server(str(self.hostname),
+                server_val = f'ldaps://{self.hostname}:636'
+                self.server = Server(str(f'{server_val}'),
                                      port=636, use_ssl=True, get_info=ALL)
             except:
                 self.server = Server(str(self.hostname), get_info=ALL)
@@ -240,7 +243,7 @@ class LDAPSearch:
             self.dom_1 = f"{self.long_dc}"
             try:
                 self.conn = Connection(
-                    self.server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
+                    self.server, user=f"{self.domain}\\{self.username}", password=self.hash, auto_bind=True, authentication=NTLM)
                 self.conn.bind()
             except ldap3.core.exceptions.LDAPBindError:
                 print(self.info + "Invalid credentials. Please try again." + self.close)
@@ -267,18 +270,21 @@ class LDAPSearch:
         # Quick check on current user's permissions in the domain
         print('\n' + '-'*31 + 'Domain Enumeration' + '-'*31)
         self.conn.search(
-            f'{self.dom_1}', f'(&(objectclass=person)(objectCategory=Person)(sAMAccountName={self.username}))', attributes=ldap3.ALL_ATTRIBUTES)
+            f'{self.dom_1}', f'(sAMAccountName={self.username})', attributes=ldap3.ALL_ATTRIBUTES)
         for entry in self.conn.entries:
             username = entry.sAMAccountName
-            print(f"Current User: {username}\n")
-        groups = self.conn.entries[0]['memberOf']
-        print("Group Membership(s):")
-        for entry in groups:
-            entry1 = str(entry)
-            remove_cn = entry1.replace('CN=', '')
-            group_name = remove_cn.split(',')
-            group = str(group_name[0])
-            print(group)
+            print(f"Current User: {username}")
+        try:
+            groups = self.conn.entries[0]['memberOf']
+            print("Group Membership(s):")
+            for entry in groups:
+                entry1 = str(entry)
+                remove_cn = entry1.replace('CN=', '')
+                group_name = remove_cn.split(',')
+                group = str(group_name[0])
+                print(group)
+        except Exception:
+            pass
 
         self.conn.search(f'{self.dom_1}', '(objectclass=*)',
                          attributes=['ms-DS-MachineAccountQuota'])
@@ -682,7 +688,7 @@ class LDAPSearch:
             val2 = str(entry.sAMAccountname)
             # pass_val = 'pass'
             val3 = val1.lower()
-            if "pass" in val3 or "pwd" in val3 or "cred" in val3 or "ldap3" in val3:
+            if "pass" in val3 or "pwd" in val3 or "cred" in val3:
                 print(self.success +
                       f'User: {val2} - Description: {val1}' + self.close)
 
@@ -701,7 +707,7 @@ class LDAPSearch:
             if self.args.anon:
                 self.anonymous_bind()
             elif self.args.ntlm:
-                self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
+                # self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
                 self.ntlm_bind()
             elif self.args.password:
                 self.password = self.args.password
