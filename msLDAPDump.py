@@ -42,7 +42,8 @@ class LDAPSearch:
         print('  / __ `__ \/ ___/ /   / / / / /| | / /_/ / / / / / / / __ `__ \/ __ \ ')
         print(' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
         print('/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
-        print('                   Active Directory LDAP Enumerator          /_/ v1.1 Release')
+        print(
+            '                   Active Directory LDAP Enumerator          /_/ v1.1 Release')
         print("                     Another Project by TheMayor \n" + self.close)
 
     def arg_handler(self):
@@ -77,24 +78,26 @@ class LDAPSearch:
     def portscan(self):
         subnet = self.subnet
         socket.setdefaulttimeout(0.05)
-        check_ports = [389, 636]
-        print(self.info + f'[info] Checking for possible domain controllers in the {self.subnet}/24 subnet.\n' + self.close)
-        for host in range(1,254):
+        check_ports = [389, 636, 3269]
+        print(
+            self.info + f'[info] Checking for possible domain controllers in the {self.subnet}/24 subnet.\n' + self.close)
+        for host in range(1, 254):
             for port in check_ports:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     ip_addr = subnet[:subnet.rfind('.')+1] + str(host)
-                    # ip_addr = f'192.168.1.{str(host)}'
                     s.connect((ip_addr, port))
-                    if port == 389:
-                        print(self.success + f"[+] Possible Domain Controller Found at {ip_addr}." + self.close)
+                    if port == 389 or port == 636 or port == 3269:
+                        print(
+                            self.success + f"[+] Possible Domain Controller found at {ip_addr}." + self.close)
                         break
-                    if port == 636:
-                            print(self.success + f"[+] Possible Domain Controller Found at {ip_addr}." + self.close)
+
                     s.close()
                 except (ConnectionRefusedError, AttributeError, OSError):
-                    pass 
-        print(self.info + "\n[info] Scan of the provided subnet is complete. Try to use any identified IP addresses for additional enumeration." + self.close)
+                    pass
+        print(
+            self.info + "\n[info] Scan of the provided subnet is complete. Try to use any identified IP addresses for additional enumeration." + self.close)
+
     def anonymous_bind(self):
         try:
             self.t1 = datetime.now()
@@ -291,7 +294,8 @@ class LDAPSearch:
             quit()
 
     def domain_recon(self):
-        print(self.info + "\n[info] Let's dump some domain information quick.\n" + self.close)
+        print(
+            self.info + "\n[info] Let's dump some domain information quick.\n" + self.close)
         # Quick check on current user's permissions in the domain
         print('\n' + '-'*31 + 'Domain Enumeration' + '-'*31)
         self.conn.search(
@@ -314,7 +318,8 @@ class LDAPSearch:
         self.conn.search(f'{self.dom_1}', '(objectclass=*)',
                          attributes=['ms-DS-MachineAccountQuota'])
         quota_val = self.conn.entries[0]['ms-DS-MachineAccountQuota']
-        self.conn.search(f'{self.dom_1}', '(objectClass=domain)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.conn.search(f'{self.dom_1}', '(objectClass=domain)',
+                         attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries[0]
         entries_val = str(entries_val)
         for entries in self.conn.entries:
@@ -326,11 +331,12 @@ class LDAPSearch:
 
         print('test bed\n')
         print('domain policy')
-        self.conn.search(f'{self.dom_1}', '(objectClass=domain)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.conn.search(f'{self.dom_1}', '(objectClass=domain)',
+                         attributes=ldap3.ALL_ATTRIBUTES)
         print(self.conn.entries)
-        self.conn.search(f'{self.dom_1}', '(groupType:1.2.840.113556.1.4.803:=2147483648)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.conn.search(
+            f'{self.dom_1}', '(groupType:1.2.840.113556.1.4.803:=2147483648)', attributes=ldap3.ALL_ATTRIBUTES)
         return self.conn.entries
-
 
     def laps(self):
         # Check for LAPS passwords accessible to the current user
@@ -537,6 +543,7 @@ class LDAPSearch:
                 f.close()
         else:
             pass
+
     def server_search(self):
         # Query LDAP for computer accounts
         self.conn.search(f'{self.dom_1}', '(&(objectClass=computer)(!(objectclass=msDS-ManagedServiceAccount)))',
@@ -555,7 +562,8 @@ class LDAPSearch:
             f.close()
 
     def deprecated_os(self):
-        self.conn.search(f'{self.dom_1}', '(operatingSystem=*)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.conn.search(f'{self.dom_1}', '(operatingSystem=*)',
+                         attributes=ldap3.ALL_ATTRIBUTES)
         entries_val = self.conn.entries
         print('\n' + '-'*26 + 'Deprecated Operating Systems' + '-'*26 + '\n')
         out_val = ''
@@ -594,7 +602,6 @@ class LDAPSearch:
             except ldap3.core.exceptions.LDAPCursorAttributeError:
                 print(dc_accounts.name)
 
-            
         if os.path.exists(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt"):
             os.remove(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt")
         with open(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt", 'a') as f:
@@ -616,7 +623,7 @@ class LDAPSearch:
                 trust_id = "-> Outbound"
             if trust_vals.trustDirection == 3:
                 trust_id = "<-> Bi-Directional"
-            
+
                 print(f"{trust_id} trust with {trust_vals.trustPartner}")
         if os.path.exists(f"{self.dir_name}\\{self.domain}.domaintrusts.txt"):
             os.remove(f"{self.dir_name}\\{self.domain}.domaintrusts.txt")
