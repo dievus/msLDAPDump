@@ -329,13 +329,6 @@ class LDAPSearch:
                 pass_complexity = "Disabled"
             print(f"\nDomain Info:\nDomain GUID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
 
-        print('test bed\n')
-        print('domain policy')
-        self.conn.search(f'{self.dom_1}', '(objectClass=domain)',
-                         attributes=ldap3.ALL_ATTRIBUTES)
-        print(self.conn.entries)
-        self.conn.search(
-            f'{self.dom_1}', '(groupType:1.2.840.113556.1.4.803:=2147483648)', attributes=ldap3.ALL_ATTRIBUTES)
         return self.conn.entries
 
     def laps(self):
