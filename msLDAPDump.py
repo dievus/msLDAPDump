@@ -758,6 +758,7 @@ class LDAPSearch:
                 self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
                 self.ntlm_bind()
             elif self.args.password:
+                self.authenticated_bind()
                 self.password = self.args.password
 
         except ValueError as ve:
