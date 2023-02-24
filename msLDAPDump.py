@@ -33,6 +33,7 @@ class LDAPSearch:
         self.close = Style.RESET_ALL
         self.t1 = None
         self.t2 = None
+        self.subnet = None
 
     def banner(self):
         print(self.info + "")
@@ -41,7 +42,7 @@ class LDAPSearch:
         print('  / __ `__ \/ ___/ /   / / / / /| | / /_/ / / / / / / / __ `__ \/ __ \ ')
         print(' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
         print('/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
-        print('                   Active Directory LDAP Enumerator          /_/ v1.0 Release')
+        print('                   Active Directory LDAP Enumerator          /_/ v1.1 Release')
         print("                     Another Project by TheMayor \n" + self.close)
 
     def arg_handler(self):
@@ -49,7 +50,9 @@ class LDAPSearch:
             '''Anonymous Bind: python3 msldapdump.py -a --dc 192.168.1.79\n\nAuthenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --password Password123!\n\nNTLM Authenticated Bind: python3 msldapdump.py --dc 192.168.1.79 --user testuser --ntlm <hash>\n'''))
         opt_parser_target = opt_parser.add_argument_group('Target')
         opt_parser_target.add_argument(
-            '-d', '--dc', help='Sets the domain controller IP. (Required)', required=True)
+            '-d', '--dc', help='Sets the domain controller IP. (Required if running LDAP checks.)')
+        opt_parser_target.add_argument(
+            '-sn', '--subnet', help='Runs a quick portscan to find possible domain controllers (ex. 192.168.1.0; /24 only).')
         opt_parser_anon = opt_parser.add_argument_group('Anonymous Bind')
         opt_parser_anon.add_argument(
             '-a', '--anon', help='Specify anonymous bind checks only.', action='store_true'
@@ -69,7 +72,29 @@ class LDAPSearch:
         self.username = self.args.user
         self.password = self.args.password
         self.hash = self.args.ntlm
+        self.subnet = self.args.subnet
 
+    def portscan(self):
+        subnet = self.subnet
+        socket.setdefaulttimeout(0.05)
+        check_ports = [389, 636]
+        print(self.info + f'[info] Checking for possible domain controllers in the {self.subnet}/24 subnet.\n' + self.close)
+        for host in range(1,254):
+            for port in check_ports:
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    ip_addr = subnet[:subnet.rfind('.')+1] + str(host)
+                    # ip_addr = f'192.168.1.{str(host)}'
+                    s.connect((ip_addr, port))
+                    if port == 389:
+                        print(self.success + f"[+] Possible Domain Controller Found at {ip_addr}." + self.close)
+                        break
+                    if port == 636:
+                            print(self.success + f"[+] Possible Domain Controller Found at {ip_addr}." + self.close)
+                    s.close()
+                except (ConnectionRefusedError, AttributeError, OSError):
+                    pass 
+        print(self.info + "\n[info] Scan of the provided subnet is complete. Try to use any identified IP addresses for additional enumeration." + self.close)
     def anonymous_bind(self):
         try:
             self.t1 = datetime.now()
@@ -299,6 +324,14 @@ class LDAPSearch:
                 pass_complexity = "Disabled"
             print(f"\nDomain Info:\nDomain GUID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
 
+        print('test bed\n')
+        print('domain policy')
+        self.conn.search(f'{self.dom_1}', '(objectClass=domain)', attributes=ldap3.ALL_ATTRIBUTES)
+        print(self.conn.entries)
+        self.conn.search(f'{self.dom_1}', '(groupType:1.2.840.113556.1.4.803:=2147483648)', attributes=ldap3.ALL_ATTRIBUTES)
+        return self.conn.entries
+
+
     def laps(self):
         # Check for LAPS passwords accessible to the current user
         print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 +
@@ -383,7 +416,7 @@ class LDAPSearch:
             f.close()
 
     def kerberoast_accounts(self):
-        # Query LDAP for Kerberoastable users
+        # Query LDAP for Kerberoastable users - searching for SPNs where user is a normal user and account is not disabled
         self.conn.search(f'{self.dom_1}', '(&(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512))(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))',
                          attributes=[ldap3.ALL_ATTRIBUTES])
         entries_val = self.conn.entries
@@ -399,7 +432,7 @@ class LDAPSearch:
 
     def aspreproast_accounts(self):
         # Query LDAP for ASREPRoastable Users
-        self.conn.search(f'{self.dom_1}', '(&(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=4194304))', attributes=[
+        self.conn.search(f'{self.dom_1}', '(&(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=4194304)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))', attributes=[
             'sAMAccountName'])
         entries_val = self.conn.entries
         print('\n' + '-'*30 + 'ASREPRoastable Users' + '-'*30 + '\n')
@@ -556,7 +589,12 @@ class LDAPSearch:
         print('\n' + '-'*31 + 'Domain Controllers' + '-'*31 + '\n')
         entries_val = str(entries_val)
         for dc_accounts in self.conn.entries:
-            print(dc_accounts.dNSHostName)
+            try:
+                print(dc_accounts.dNSHostName)
+            except ldap3.core.exceptions.LDAPCursorAttributeError:
+                print(dc_accounts.name)
+
+            
         if os.path.exists(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt"):
             os.remove(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt")
         with open(f"{self.dir_name}\\{self.domain}.domaincontrollers.txt", 'a') as f:
@@ -697,6 +735,7 @@ class LDAPSearch:
         total = str(total)
         print(self.info +
               f"\nLDAP enumeration completed in {total}.\n" + self.close)
+        self.conn.unbind()
         quit()
 
     def run(self):
@@ -704,15 +743,16 @@ class LDAPSearch:
         try:
             ldap_search.banner()
             self.arg_handler()
+            if self.args.subnet:
+                self.portscan()
             if self.args.anon:
                 self.anonymous_bind()
             elif self.args.ntlm:
-                # self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
+                self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
                 self.ntlm_bind()
             elif self.args.password:
                 self.password = self.args.password
-                self.authenticated_bind()
-            self.conn.unbind()
+
         except ValueError as ve:
             print(ve)
             self.run()
