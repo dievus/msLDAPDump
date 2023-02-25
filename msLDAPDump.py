@@ -88,8 +88,13 @@ class LDAPSearch:
                     ip_addr = subnet[:subnet.rfind('.')+1] + str(host)
                     s.connect((ip_addr, port))
                     if port == 389 or port == 636 or port == 3269:
-                        print(
-                            self.success + f"[+] Possible Domain Controller found at {ip_addr}." + self.close)
+                        try:
+                            host_resolve = socket.gethostbyaddr(ip_addr)[0]
+                            print(
+                                self.success + f"[+] Possible Domain Controller found at {ip_addr} - {host_resolve}." + self.close)
+                        except Exception:
+                            print(
+                                self.success + f"[+] Possible Domain Controller found at {ip_addr}." + self.close)
                         break
 
                     s.close()
