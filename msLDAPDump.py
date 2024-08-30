@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from ldap3 import Server, Connection, ALL, NTLM
+from ldap3 import Server, Connection, ALL, NTLM, SUBTREE, ALL_ATTRIBUTES
 import ldap3
 from colorama import Fore, Style, init
 import sys
@@ -9,8 +9,48 @@ import os
 import os.path
 import argparse
 import textwrap
+import re
+import threading
+from binascii import hexlify
+from Cryptodome.Hash import MD4
+from impacket.ldap.ldaptypes import SR_SECURITY_DESCRIPTOR
+from impacket.structure import Structure
+from impacket.krb5 import constants
+from impacket.krb5.crypto import string_to_key
 
+class MSDS_MANAGEDPASSWORD_BLOB(Structure):
+    structure = (
+        ('Version','<H'),
+        ('Reserved','<H'),
+        ('Length','<L'),
+        ('CurrentPasswordOffset','<H'),
+        ('PreviousPasswordOffset','<H'),
+        ('QueryPasswordIntervalOffset','<H'),
+        ('UnchangedPasswordIntervalOffset','<H'),
+        ('CurrentPassword',':'),
+        ('PreviousPassword',':'),
+        #('AlignmentPadding',':'),
+        ('QueryPasswordInterval',':'),
+        ('UnchangedPasswordInterval',':'),
+    )
 
+    def __init__(self, data = None):
+        Structure.__init__(self, data = data)
+
+    def fromString(self, data):
+        Structure.fromString(self,data)
+
+        if self['PreviousPasswordOffset'] == 0:
+            endData = self['QueryPasswordIntervalOffset']
+        else:
+            endData = self['PreviousPasswordOffset']
+
+        self['CurrentPassword'] = self.rawData[self['CurrentPasswordOffset']:][:endData - self['CurrentPasswordOffset']]
+        if self['PreviousPasswordOffset'] != 0:
+            self['PreviousPassword'] = self.rawData[self['PreviousPasswordOffset']:][:self['QueryPasswordIntervalOffset']-self['PreviousPasswordOffset']]
+
+        self['QueryPasswordInterval'] = self.rawData[self['QueryPasswordIntervalOffset']:][:self['UnchangedPasswordIntervalOffset']-self['QueryPasswordIntervalOffset']]
+        self['UnchangedPasswordInterval'] = self.rawData[self['UnchangedPasswordIntervalOffset']:]
 class LDAPSearch:
     def __init__(self):
         self.args = None
@@ -43,7 +83,7 @@ class LDAPSearch:
         print(' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
         print('/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
         print(
-            '                   Active Directory LDAP Enumerator          /_/ v1.1 Release')
+            '                   Active Directory LDAP Enumerator          /_/ v2.0 Release')
         print("                     Another Project by TheMayor \n" + self.close)
 
     def arg_handler(self):
@@ -65,6 +105,8 @@ class LDAPSearch:
             '-p', '--password', help='Sets the password to authenticate with.')
         opt_parser_auth.add_argument(
             '-n', '--ntlm', help='The NTLM hash to use in place of a password.')
+        opt_parser_auth.add_argument(
+            '-dn', '--domain', help='Sets the domain name, if unknown.')
         self.args = opt_parser.parse_args()
         if len(sys.argv) == 1:
             opt_parser.print_help()
@@ -74,18 +116,20 @@ class LDAPSearch:
         self.password = self.args.password
         self.hash = self.args.ntlm
         self.subnet = self.args.subnet
-
+        if self.args.domain:
+            self.domain = self.args.domain
     def portscan(self):
         subnet = self.subnet
         socket.setdefaulttimeout(0.05)
         check_ports = [389, 636, 3269]
         print(
             self.info + f'[info] Checking for possible domain controllers in the {self.subnet}/24 subnet.\n' + self.close)
-        for host in range(1, 254):
+
+        def scan_host(host):
             for port in check_ports:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    ip_addr = subnet[:subnet.rfind('.')+1] + str(host)
+                    ip_addr = subnet[:subnet.rfind('.') + 1] + str(host)
                     s.connect((ip_addr, port))
                     if port == 389 or port == 636 or port == 3269:
                         try:
@@ -95,13 +139,51 @@ class LDAPSearch:
                         except Exception:
                             print(
                                 self.success + f"[+] Possible Domain Controller found at {ip_addr}." + self.close)
-                        break
-
+                        s.close()
+                        return
                     s.close()
                 except (ConnectionRefusedError, AttributeError, OSError):
                     pass
+
+        threads = []
+        for host in range(1, 255):
+            t = threading.Thread(target=scan_host, args=(host,))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
         print(
             self.info + "\n[info] Scan of the provided subnet is complete. Try to use any identified IP addresses for additional enumeration." + self.close)
+
+    # def portscan(self):
+        # subnet = self.subnet
+        # socket.setdefaulttimeout(0.05)
+        # check_ports = [389, 636, 3269]
+        # print(
+        #     self.info + f'[info] Checking for possible domain controllers in the {self.subnet}/24 subnet.\n' + self.close)
+        # for host in range(1, 255):
+        #     for port in check_ports:
+        #         try:
+        #             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #             ip_addr = subnet[:subnet.rfind('.')+1] + str(host)
+        #             s.connect((ip_addr, port))
+        #             if port == 389 or port == 636 or port == 3269:
+        #                 try:
+        #                     host_resolve = socket.gethostbyaddr(ip_addr)[0]
+        #                     print(
+        #                         self.success + f"[+] Possible Domain Controller found at {ip_addr} - {host_resolve}." + self.close)
+        #                 except Exception:
+        #                     print(
+        #                         self.success + f"[+] Possible Domain Controller found at {ip_addr}." + self.close)
+        #                 break
+
+        #             s.close()
+        #         except (ConnectionRefusedError, AttributeError, OSError):
+        #             pass
+        # print(
+        #     self.info + "\n[info] Scan of the provided subnet is complete. Try to use any identified IP addresses for additional enumeration." + self.close)
 
     def anonymous_bind(self):
         try:
@@ -119,7 +201,7 @@ class LDAPSearch:
             with open(f"{self.hostname}.ldapdump.txt", 'w') as f:
                 f.write(str(self.server.info))
             print(
-                self.info + "[info] Let's try to identify a domain naming convention for the domain.\n" + self.close)
+                self.info + "[info] Let's try to identify a domain naming convention for the domain." + self.close)
             with open(f"{self.hostname}.ldapdump.txt", 'r') as f:
                 for line in f:
                     if line.startswith("    DC="):
@@ -133,13 +215,39 @@ class LDAPSearch:
                             continue
                         else:
                             break
-            self.domain = self.name_context
-            domain_contents = self.domain.split(".")
+                self.domain = self.name_context
+                domain_contents = self.domain.split(".")
+                print(
+                    self.success + f"[success] Possible domain name found - {self.name_context}" + self.close)
+                print(
+                    self.info + '\n[info] Attempting to gather additional information about the domain.' + self.close)
+                self.dom_1 = f"{self.long_dc}"
+                contents = f.read()
+                dns_host_name = re.search(r"dnsHostName:\s+([^\n]+)", contents)
+                if dns_host_name:
+                    value = dns_host_name.group(1)
+                    print(self.success +
+                          f'[success] Domain Controller Name Found - {value}')
+                domain_func = re.search(
+                    r"domainFunctionality:\s+(\d+)", contents)
+                if domain_func:
+                    domain_levels = {
+                        0: "Windows 2000 Mixed",
+                        1: "Windows Server 2003 Interim",
+                        2: "Windows Server 2003",
+                        3: "Windows Server 2008",
+                        4: "Windows Server 2008 R2",
+                        5: "Windows Server 2012",
+                        6: "Windows Server 2012 R2",
+                        7: "Windows Server 2016/2019"
+                    }
+                    value = int(domain_func.group(1))
+                    level = domain_levels[value]
+                    print(
+                        self.success + f'[success] Domain Controller Server Version Identified: {level}')
+
             print(
-                self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
-            self.dom_1 = f"{self.long_dc}"
-            print(
-                self.info + f'[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
+                self.info + f'\n[info] All set for now. Come back with credentials to dump additional domain information. Full raw output saved as {self.hostname}.ldapdump.txt\n' + self.close)
             self.t2 = datetime.now()
             total = self.t2 - self.t1
             total = str(total)
@@ -182,12 +290,13 @@ class LDAPSearch:
                         self.name_context = self.name_context.replace(
                             "DC=", "")
                         self.name_context = self.name_context.replace(",", ".")
-                        if "ForestDnsZones" in self.name_context:
+                        if "ForestDnsZones" in self.name_context or "DomainDnsZones" in self.name_context:
                             continue
                         else:
                             break
             self.dir_name = f"{self.name_context}"
-            self.domain = self.name_context
+            if self.domain is None:
+                self.domain = self.name_context
             print(
                 self.info + f'[info] Creating a folder named {self.dir_name} to host file output.\n' + self.close)
             try:
@@ -195,24 +304,27 @@ class LDAPSearch:
                 os.rename(f"{self.hostname}.ldapdump.txt",
                           f"{self.dir_name}\\{self.domain}.ldapdump.txt")
             except FileExistsError:
-                os.remove(f"{self.dir_name}\\{self.domain}.ldapdump.txt")
-                os.rename(f"{self.hostname}.ldapdump.txt",
-                          f"{self.dir_name}\\{self.domain}.ldapdump.txt")
-                pass
-            domain_contents = self.domain.split(".")
+                try:
+                    os.remove(f"{self.dir_name}\\{self.domain}.ldapdump.txt")
+                    os.rename(f"{self.hostname}.ldapdump.txt",
+                            f"{self.dir_name}\\{self.domain}.ldapdump.txt")
+                    pass
+                except FileNotFoundError:
+                    pass
             print(
                 self.success + f"[success] Possible domain name found - {self.name_context}\n" + self.close)
             self.dom_1 = f"{self.long_dc}"
             try:
+                dom_name = self.domain.split(".", 1)[0]
                 self.conn = Connection(
-                    self.server, user=f"{domain_contents[self.dc_val - 2]}\\{self.username}", password=self.password, auto_bind=True)
+                    self.server, user=f"{dom_name}\\{self.username}", password=self.password, auto_bind=True)
                 self.conn.bind()
             except ldap3.core.exceptions.LDAPBindError:
                 print(self.info + "Invalid credentials. Please try again." + self.close)
                 quit()
             print(self.success +
                   f"[success] Connected to {self.hostname}.\n" + self.close)
-            self.domain_recon(), self.laps(), self.search_users(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+            self.domain_recon(), self.gmsa_accounts(), self.laps(), self.search_users(), self.search_pass_expire(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
             ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.server_search(), self.deprecated_os(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
 
         except (ipaddress.AddressValueError, socket.herror):
@@ -276,7 +388,7 @@ class LDAPSearch:
             self.dom_1 = f"{self.long_dc}"
             try:
                 self.conn = Connection(
-                    self.server, user=f"{self.domain}\\{self.username}", password=self.password, auto_bind=True, authentication=NTLM)
+                    self.server, user=f"{self.domain}\\{self.username}", password=self.hash, auto_bind=True, authentication=NTLM)
                 self.conn.bind()
             except ldap3.core.exceptions.LDAPBindError:
                 print(self.info + "Invalid credentials. Please try again." + self.close)
@@ -284,7 +396,7 @@ class LDAPSearch:
 
             print(self.success +
                   f"[success] Connected to {self.hostname}.\n" + self.close)
-            self.domain_recon(), self.laps(), self.search_users(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
+            self.domain_recon(), self.gmsa_accounts(), self.laps(), self.search_users(), self.search_pass_expire(), self.search_groups(), self.admin_accounts(), self.kerberoast_accounts(), self.aspreproast_accounts(), self.unconstrained_search(), self.constrainted_search(
             ), self.computer_search(), self.ad_search(), self.trusted_domains(), self.server_search(), self.deprecated_os(), self.mssql_search(), self.exchange_search(), self.gpo_search(), self.admin_count_search(), self.find_fields()
         except (ipaddress.AddressValueError, socket.herror):
             print(
@@ -319,7 +431,6 @@ class LDAPSearch:
                 print(group)
         except Exception:
             pass
-
         self.conn.search(f'{self.dom_1}', '(objectclass=*)',
                          attributes=['ms-DS-MachineAccountQuota'])
         quota_val = self.conn.entries[0]['ms-DS-MachineAccountQuota']
@@ -332,10 +443,61 @@ class LDAPSearch:
                 pass_complexity = "Enabled"
             elif entries.pwdProperties == 0:
                 pass_complexity = "Disabled"
-            print(f"\nDomain Info:\nDomain GUID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
-
+            print(f"\nDomain Info:\nDomain SID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
+        # self.conn.search(f'{self.dom_1}', '(&(ObjectClass=msDS-GroupManagedServiceAccount))', attributes=['sAMAccountName', 'msDS-ManagedPassword', 'msDS-GroupMSAMembership'])
+        # gmsa_val = self.conn.entries
+        # for accounts in gmsa_val:
+        #     gmsa_accounts.append(accounts.sAMAccountName)
+        # for account_name in gmsa_accounts:
+        #     account_name = str(account_name)
+        #     print(account_name)
         return self.conn.entries
+    def gmsa_accounts(self):
+        gmsa_accounts = []
+        try:
+            print('\n' + '-'*25 + 'Group Managed Service Accounts' + '-'*26 + '\n')
+            self.conn.search(f'{self.dom_1}', '(&(ObjectClass=msDS-GroupManagedServiceAccount))', attributes=['sAMAccountName', 'msDS-ManagedPassword', 'msDS-GroupMSAMembership'])
+            gmsa_val = self.conn.entries
+            for accounts in gmsa_val:
+                gmsa_accounts.append(accounts.sAMAccountName)
+            for account_name in gmsa_accounts:
+                account_name = str(account_name)
+                # print(account_name)
+            for entry in self.conn.entries:
+                    sam = entry['sAMAccountName'].value
+                    # print('Users or groups who can read password for '+sam+':')
+                    for dacl in SR_SECURITY_DESCRIPTOR(data=entry['msDS-GroupMSAMembership'].raw_values[0])['Dacl']['Data']:
+                        self.conn.search(f'{self.dom_1}', '(&(objectSID='+dacl['Ace']['Sid'].formatCanonical()+'))', attributes=['sAMAccountName'])
+                        
+                        # Added this check to prevent an error from occuring when there are no results returned
+                        if len(self.conn.entries) != 0:
+                            print('Users or groups who can read password for '+sam+':')
+                            print(' > ' + self.conn.entries[0]['sAMAccountName'].value)
 
+                    if 'msDS-ManagedPassword' in entry and entry['msDS-ManagedPassword']:
+                        data = entry['msDS-ManagedPassword'].raw_values[0]
+                        blob = MSDS_MANAGEDPASSWORD_BLOB()
+                        blob.fromString(data)
+                        currentPassword = blob['CurrentPassword'][:-2]
+
+                        # Compute ntlm key
+                        ntlm_hash = MD4.new ()
+                        ntlm_hash.update (currentPassword)
+                        passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                        print(f'-- Hashes for {sam} --')
+                        userpass = sam + ':aad3b435b51404eeaad3b435b51404ee:' + passwd
+                        print(userpass)
+
+                        # Compute aes keys
+                        password = currentPassword.decode('utf-16-le', 'replace').encode('utf-8')
+                        # print(password)
+                        salt = '%shost%s.%s' % (self.args.domain.upper(), sam[:-1].lower(), self.args.domain.lower())
+                        aes_128_hash = hexlify(string_to_key(constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value, password, salt).contents)
+                        aes_256_hash = hexlify(string_to_key(constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value, password, salt).contents)
+                        print('%s:aes256-cts-hmac-sha1-96:%s' % (sam, aes_256_hash.decode('utf-8')))
+                        print('%s:aes128-cts-hmac-sha1-96:%s' % (sam, aes_128_hash.decode('utf-8')))
+        except Exception:
+            pass
     def laps(self):
         # Check for LAPS passwords accessible to the current user
         print('\n' + '-'*33 + 'LAPS Passwords' + '-'*33 +
@@ -357,9 +519,8 @@ class LDAPSearch:
 
     def search_users(self):
         # Search domain users
-
         self.conn.search(
-            f'{self.dom_1}', '(&(objectclass=person)(objectCategory=Person))', attributes=ldap3.ALL_ATTRIBUTES)
+            f'{self.dom_1}', '(&(objectclass=person)(objectCategory=Person))', search_scope=SUBTREE, attributes=ALL_ATTRIBUTES)
         entries_val = self.conn.entries
         print('\n' + '-'*38 + 'Users' + '-'*37 + '\n')
         entries_val = str(entries_val)
@@ -369,7 +530,32 @@ class LDAPSearch:
             f.write(entries_val)
             f.close
         for users in self.conn.entries:
-            print(users.sAMAccountName)
+            try:
+                print(users.sAMAccountName)
+            except Exception:
+                pass
+        # except Exception:
+            #pass
+            
+
+    def search_pass_expire(self):
+        # Search for users where the password attribute is set to not expire
+
+        self.conn.search(
+            f'{self.dom_1}', '(&(objectclass=user)(objectCategory=Person)(userAccountControl:1.2.840.113556.1.4.803:=65536))', attributes=ldap3.ALL_ATTRIBUTES)
+        entries_val = self.conn.entries
+        print('\n' + '-'*24 + 'Users With Non-Expiring Passwords' + '-'*23 + '\n')
+        entries_val = str(entries_val)
+        if os.path.exists(f"{self.dir_name}\\{self.domain}.pass_never_expires.txt"):
+            os.remove(f"{self.dir_name}\\{self.domain}.pass_never_expires.txt")
+        with open(f"{self.dir_name}\\{self.domain}.pass_never_expires.txt", 'w') as f:
+            f.write(entries_val)
+            f.close
+        try:
+            for users in self.conn.entries:
+                print(users.sAMAccountName)
+        except Exception:
+            pass
 
     def search_groups(self):
         # Query LDAP for groups
@@ -408,7 +594,11 @@ class LDAPSearch:
                     admin_name = line.strip()
                     admin_name = admin_name.replace('member: ', '')
                     if admin_name not in admin_users:
-                        print(admin_name)
+                        self.conn.search(admin_name, '(objectClass=user)', attributes=['sAMAccountName'])
+                        for entry in self.conn.entries:
+                            sam_name = self.conn.entries[0].sAMAccountName
+                            print(sam_name)
+                        # print(admin_name)
                         admin_users.append(admin_name)
                         admin_val += 1
                     else:
@@ -754,6 +944,7 @@ class LDAPSearch:
                 self.anonymous_bind()
             elif self.args.ntlm:
                 self.password = f"aad3b435b51404eeaad3b435b51404ee:{self.args.ntlm}"
+                print(self.password)
                 self.ntlm_bind()
             elif self.args.password:
                 self.authenticated_bind()
