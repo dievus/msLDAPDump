@@ -77,13 +77,13 @@ class LDAPSearch:
 
     def banner(self):
         print(self.info + "")
-        print('                   __    ____  ___    ____  ____')
-        print('   ____ ___  _____/ /   / __ \/   |  / __ \/ __ \__  ______ ___  ____')
-        print('  / __ `__ \/ ___/ /   / / / / /| | / /_/ / / / / / / / __ `__ \/ __ \ ')
-        print(' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
-        print('/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
+        print(r'                   __    ____  ___    ____  ____')
+        print(r'   ____ ___  _____/ /   / __ \/   |  / __ \/ __ \__  ______ ___  ____')
+        print(r'  / __ `__ \/ ___/ /   / / / / /| | / /_/ / / / / / / / __ `__ \/ __ \ ')
+        print(r' / / / / / (__  ) /___/ /_/ / ___ |/ ____/ /_/ / /_/ / / / / / / /_/ /')
+        print(r'/_/ /_/ /_/____/_____/_____/_/  |_/_/   /_____/\__,_/_/ /_/ /_/ .___/')
         print(
-            '                   Active Directory LDAP Enumerator          /_/ v2.0 Release')
+            '                   Active Directory LDAP Enumerator          /_/ v1.1 Release')
         print("                     Another Project by TheMayor \n" + self.close)
 
     def arg_handler(self):
@@ -444,13 +444,6 @@ class LDAPSearch:
             elif entries.pwdProperties == 0:
                 pass_complexity = "Disabled"
             print(f"\nDomain Info:\nDomain SID: {entries.objectSid}\nDomain Created Date: {entries.CreationTime}\nms-DS-MachineAccountQuota: {quota_val}\n\nPassword Policy:\nLockout Threshold: {entries.lockoutThreshold}\nLockout Duration: {entries.lockoutDuration}\nMax Password Age: {entries.maxPwdAge}\nMinimum Password Length: {entries.minPwdLength}\nPassword Complexity: {pass_complexity}")
-        # self.conn.search(f'{self.dom_1}', '(&(ObjectClass=msDS-GroupManagedServiceAccount))', attributes=['sAMAccountName', 'msDS-ManagedPassword', 'msDS-GroupMSAMembership'])
-        # gmsa_val = self.conn.entries
-        # for accounts in gmsa_val:
-        #     gmsa_accounts.append(accounts.sAMAccountName)
-        # for account_name in gmsa_accounts:
-        #     account_name = str(account_name)
-        #     print(account_name)
         return self.conn.entries
     def gmsa_accounts(self):
         gmsa_accounts = []
