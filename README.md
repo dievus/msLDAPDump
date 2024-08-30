@@ -44,7 +44,7 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 
 - [X] Add support for LDAPS (LDAP Secure)
 - [X] NTLM Authentication
-- [ ] Figure out why Unix only allows one adapter to make a call out to the LDAP server (removed resolution from Linux until resolved)
+- [X] gMSA Support 
 - [X] Add support for querying child domain information (currently does not respond nicely to querying child domain controllers)
 - [X] Figure out how to link the name to the Description field dump at the end of the script
 - [X] Implement command line options rather than inputs 
