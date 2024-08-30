@@ -51,3 +51,5 @@ Each check outputs the raw contents to a text file, and an abbreviated, cleaner 
 - [X] Check for deprecated operating systems in the domain
 ### Mandatory Disclaimer
 Please keep in mind that this tool is meant for ethical hacking and penetration testing purposes only. I do not condone any behavior that would include testing targets that you do not currently have permission to test against.
+
+### gMSA updates thanks to https://github.com/micahvandeusen/gMSADumper
